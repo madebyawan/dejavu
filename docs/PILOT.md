@@ -1,67 +1,49 @@
-# Pilot: Made by Awan repositories
+# Pilot: aggregate local measurements
 
-Status: phase 1 (local, read-only) complete, 2026-10-18. Tracks [#6](https://github.com/madebyawan/dejavu/issues/6).
+Status: phase 1 (read-only local evaluation) completed 2026-10-18. Tracks [#6](https://github.com/madebyawan/dejavu/issues/6).
 
-The pilot repositories are private, so this report gives only aggregate numbers and generic task descriptions. It contains no file names, issue text, or agent output from those repositories.
+**Publication boundary:** Never disclose or link nonpublic repository names, organizations, URLs, paths, issues, PRs, source text, screenshots, commands containing identifiers, or task prompts in this public project. This document intentionally includes **aggregate results only**. All reproducible public tests should use fictional fixtures or explicitly public repositories.
 
-## Phase 1: local measurement
+## Phase 1: summary
 
-Method: shallow clones of the four repositories in a scratch directory, so the originals were not touched. The installs used the CLI at the head of the [#15](https://github.com/madebyawan/dejavu/pull/15) stack plus this change.
+Four different local repositories were evaluated in isolated shallow checkouts; source repositories were left unchanged. The evaluation covered a range of documentation corpus sizes, including large documentation archives.
 
-### Install (`dejavu init --mode adopt-existing --skills all`)
-
-| Repository | Docs indexed | Result |
-| --- | --- | --- |
-| Made by Awan | 12 files | 10 files created; existing `AGENTS.md` and `CLAUDE.md` untouched; `check` passed |
-| NoteFriends | 516 files | same |
-| Awan Sound Machines | 154 files | same |
-| Awan Arcade | 12 files | same |
+`dejavu init --mode adopt-existing --skills all` did not overwrite existing `AGENTS.md` or `CLAUDE.md`; subsequent validation passed in every sample.
 
 Findings:
-- **Fixed in this change:** in the two large repositories, the index truncated alphabetically at 100 files, hiding whole folders such as ticket and bug archives and decision logs. Large folders are now summarized by subfolder, with links and file counts. Small subfolders are listed in full. The largest index went from 100 files plus "…and 415 more" to a 135-line index that covers every folder.
-- **Expected:** every repository already has an `AGENTS.md`, so init left it alone and suggested a one-line pointer. One repository's `CLAUDE.md` does not point to `AGENTS.md`, and init suggested that pointer too. Adding these is part of a reviewed install PR.
+- Previously, indexes for documentation-heavy repositories stopped after 100 alphabetically listed files and omitted later folders. The implementation now summarizes large subfolders instead, ensuring high-level coverage of every folder.
+- When a repository already has an agent instruction file, setup leaves it alone and suggests a minimal knowledge-layer pointer rather than rewriting it.
+- `dejavu orient` emitted task-relevant excerpts within its default 1200-token budget, instead of loading entire documentation corpora. Local query times ranged from 60 to 470 ms.
 
-### Context size (`dejavu orient`, default 1200-token budget)
+### Agent runs with and without orientation
 
-| Repository | Corpus (estimated tokens) | `orient` output | Share |
-| --- | --- | --- | --- |
-| Made by Awan | ~10k | ~1.1k | 11% |
-| NoteFriends | ~664k | ~1.0k | 0.1% |
-| Awan Sound Machines | ~305k | ~1.0k | 0.3% |
-| Awan Arcade | ~18k | ~0.8k | 5% |
+[`scripts/benchmark-agent.mjs`](../scripts/benchmark-agent.mjs) runs a coding agent headless and read-only in a fresh checkout and measures file-discovery tasks with and without `orient` context. Across the four *single-run paired cases*:
 
-Runtime was 60–470 ms per query.
+| Metric | Aggregate result |
+| --- | --- |
+| Agent turns | 25 → 25 |
+| Input tokens | 18% lower |
+| Elapsed time | 17% lower |
+| Model cost | 18% lower |
 
-### Agent runs with and without `orient`
+**Interpretation:** the additional orientation context helped most when relevant documentation was hard to discover by browsing. It sometimes had little benefit when answers were directly in code. Answer quality appeared similar in these exploratory runs, and the agent checked the source excerpts against the underlying repository.
 
-[`scripts/benchmark-agent.mjs`](../scripts/benchmark-agent.mjs) runs Claude Code headless and read-only (`Read`, `Grep`, `Glob`; project settings only) in a fresh clone. The prompt asks the agent to find the 3–6 files to read first for a task and list the constraints that apply. The same prompt runs once alone and once with the `orient` output (about 1.1k tokens) appended. Each repository got one task based on real, current work:
+**Limitations:** only one run per condition, one model, and source-finding rather than actual end-to-end implementation. These results are indicative, not statistically significant. No 10× or 80% performance claim is supported by this evaluation.
 
-| Repository | Task type | Turns | Input tokens | Time | Cost |
-| --- | --- | --- | --- | --- | --- |
-| Made by Awan | Add a project to the landing page | 5 → 4 | −22% | 0% | −10% |
-| NoteFriends | UI bug fix from an open issue | 8 → 8 | +1% | +7% | −7% |
-| Awan Sound Machines | New module reusing a shared engine | 7 → 5 | −36% | −43% | −26% |
-| Awan Arcade | Gameplay feature from an open issue | 5 → 8 | 0% | +10% | −22% |
-| **Total** | | 25 → 25 | **−18%** | **−17%** | **−18%** |
+## Phase 2: opt-in pilot
 
-Observations:
-- **Answer quality was similar** in every pair. Both versions found the right files and constraints. With `orient`, agents checked the excerpts against the sources and said which excerpts did not apply. This is the intended behavior: the context is treated as leads, not truth.
-- **The clearest gain was in a docs-heavy repository with a large ticket archive** (Sound Machines), where the relevant ticket and design spec are hard to find by browsing.
-- **The smallest gain came when the answer lived in code** (the UI bug and the gameplay feature). `orient` indexes documentation, not source files, and these repositories already have strong `AGENTS.md` files that point agents to code quickly.
+A reviewed installation in any target repository requires its maintainer's approval:
 
-Limitations: one run per condition (agent runs vary a lot), one model, and a "find the sources" task rather than a full implementation. Treat the numbers as indicative, not significant.
+1. Open an isolated branch and run adopt-existing mode without overwriting existing instructions.
+2. Index authoritative docs and create small, source-linked ontology/topology entries.
+3. Propose evidence-backed lessons for review; never accept them automatically.
+4. Over 2–4 weeks, measure retrieval correctness, handoff quality, repeated exploration, and recurring mistakes.
+5. Repeat agent comparisons with three or more runs per condition and at least two tasks per repository, including an implementation task.
 
-## Phase 2: in-repository pilot (needs maintainer approval)
+Publish only aggregate statistics that have been reviewed for re-identification risk. Source-linked reports and repository-specific findings stay **within their own authorization boundary**, never copied into this public repository.
 
-Each repository's pilot issue asks for a reviewed install on an isolated branch. Those steps change the pilot repositories, so they wait for approval:
+## Follow-ups
 
-1. Open an install PR in each repository: `adopt-existing`, plus a one-line `.dejavu/` pointer in `AGENTS.md`, plus the skill if wanted. Nothing else changes.
-2. Write small ontology and topology entries that link to real files, reviewed by the owner.
-3. Add lessons only from verified PRs or bugs, using `dejavu learn`. The owner accepts them with `dejavu reconcile accept --by`.
-4. Over 2–4 weeks, record handoff success (`resume` used, and whether the next session continued without re-exploring) and any recurring mistakes covered by accepted wisdom.
-5. Repeat the agent benchmark with three or more runs per condition and at least two tasks per repository, including one implementation task.
-
-## Follow-ups suggested by phase 1
-
-- Optionally add **source-path hints** to `orient`: list tracked files whose paths match the task's terms. This targets the "answer lives in code" cases without indexing source contents.
-- Use **ontology terms for query expansion** before considering embeddings or a graph (see the [evaluation](evaluations/spec-kit-and-graphiti.md)).
+- Add optional code-path hints for tasks whose answer is not in documentation.
+- Expand task queries using reviewed ontology synonyms before considering embeddings.
+- Evaluate a source-linked compiled wiki and drift detection using **synthetic or explicitly public fixtures**.
