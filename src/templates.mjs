@@ -97,7 +97,7 @@ superseded_by: []
 
 const wisdom = `# Wisdom
 
-Accepted lessons: mistakes, root causes, and how to prevent them. Lessons arrive here only after a maintainer reviews a proposal.
+Accepted lessons: mistakes, root causes, and how to prevent them. Lessons arrive here only after a maintainer reviews a proposal (\`dejavu reconcile accept <P-id> --by <name>\`).
 
 Use one file per lesson, named \`W-NNNN-short-slug.md\`:
 

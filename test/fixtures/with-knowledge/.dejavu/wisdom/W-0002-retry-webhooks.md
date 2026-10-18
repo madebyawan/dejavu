@@ -1,6 +1,6 @@
 ---
 id: W-0002
-status: accepted
+status: superseded
 confidence: low
 supersedes: []
 superseded_by: [W-0001]

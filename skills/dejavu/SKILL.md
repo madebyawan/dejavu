@@ -24,4 +24,4 @@ Propose a lesson only when it is supported by a concrete mistake, bug, review, t
 
 ## Reconcile
 
-Flag outdated, conflicting, and superseded knowledge. Prefer updating a source of truth and referencing it over copying it into Déjà Vu. Do not silently overwrite accepted knowledge. If the `dejavu` CLI is available, run `dejavu check` after editing `.dejavu/`.
+Flag outdated, conflicting, and superseded knowledge. Prefer updating a source of truth and referencing it over copying it into Déjà Vu. Do not silently overwrite accepted knowledge. If the `dejavu` CLI is available, run `dejavu check` after editing `.dejavu/` and `dejavu reconcile` to review lessons, and report its findings. Only a maintainer runs `dejavu reconcile accept|reject|supersede`; never run them unless the maintainer explicitly asks in this session.

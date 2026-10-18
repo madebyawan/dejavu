@@ -145,6 +145,37 @@ describe('init --mode adopt-existing', () => {
     assert.equal(run('check', dir).code, 0);
   });
 
+  test('summarizes large documentation folders by subfolder instead of truncating', () => {
+    const files = { 'docs/README.md': '# Docs\n', 'docs/guide.md': '# Guide\n', 'docs/work/README.md': '# Work dashboard\n' };
+    for (let i = 0; i < 90; i++) files[`docs/work/tickets/T-${String(i).padStart(3, '0')}.md`] = `# Ticket ${i}\n`;
+    for (let i = 0; i < 30; i++) files[`docs/work/bugs/B-${String(i).padStart(3, '0')}.md`] = `# Bug ${i}\n`;
+    for (let i = 0; i < 5; i++) files[`docs/decisions/000${i}.md`] = `# Decision ${i}\n`;
+    const dir = tempRepo(files);
+    run('init', dir, '--mode', 'adopt-existing');
+    const index = read(dir, '.dejavu/index.md');
+    assert.match(index, /## docs\/\n\n- \[Docs\]\(\.\.\/docs\/README\.md\)[^\n]*\n- \[Guide\]/);
+    assert.match(index, /### docs\/decisions\/\n\n- \[Decision 0\]/);
+    assert.match(index, /### docs\/work\/\n\n- \[Work dashboard\][^\n]*\n- \[docs\/work\/\]\(\.\.\/docs\/work\/\) — 121 Markdown files: 1 directly, `bugs\/` \(30\), `tickets\/` \(90\)\./);
+    assert.doesNotMatch(index, /Ticket 5|…and/);
+    assert.equal(run('check', dir).code, 0);
+  });
+
+  test('indexes Spec Kit specs and constitution without requiring Spec Kit', () => {
+    const dir = tempRepo({
+      '.specify/memory/constitution.md': '# Project constitution\n\n## Testing\n\nEvery feature ships with integration tests.\n',
+      '.specify/templates/spec-template.md': '# Template\n',
+      'specs/001-login/spec.md': '# Feature: login\n',
+      'specs/001-login/plan.md': '# Plan: login\n',
+    });
+    run('init', dir, '--mode', 'adopt-existing');
+    const index = read(dir, '.dejavu/index.md');
+    assert.match(index, /## \.specify\/memory\/\n\n- \[Project constitution\]\(\.\.\/\.specify\/memory\/constitution\.md\)/);
+    assert.match(index, /## specs\/\n\n- \[Feature: login\]|## specs\/\n\n- \[Plan: login\]/);
+    assert.doesNotMatch(index, /spec-template/);
+    assert.equal(run('check', dir).code, 0);
+    assert.match(run('orient', 'integration tests for features', '--dir', dir).stdout, /Project constitution › Testing/);
+  });
+
   test('reports when there are no documentation folders', () => {
     const dir = tempRepo();
     run('init', dir, '--mode', 'adopt-existing');

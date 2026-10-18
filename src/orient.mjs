@@ -113,7 +113,7 @@ function wisdomChunks(root) {
 
 /** Gather every candidate chunk plus the total size of the files they came from. */
 export function corpus(root) {
-  const found = discover(root, { limit: Infinity });
+  const found = discover(root);
   const docPaths = [...found.entryPoints.map((e) => e.path), ...found.roots.flatMap((r) => r.files.map((f) => f.path))]
     .filter((p) => !INSTRUCTION_FILES.includes(p));
   const knowledgePaths = ['ontology.md', 'topology.md', 'epistemology.md'].map((f) => `${KNOWLEDGE_DIR}/${f}`);

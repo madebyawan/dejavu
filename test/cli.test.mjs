@@ -13,7 +13,7 @@ describe('cli', () => {
       assert.equal(code, 0);
       assert.match(stdout, /dejavu init \[dir\]/);
       assert.match(stdout, /dejavu check \[dir\]/);
-      assert.doesNotMatch(stdout, /reconcile/, 'unshipped commands are not advertised');
+      for (const command of ['orient', 'handoff', 'resume', 'learn', 'reconcile']) assert.match(stdout, new RegExp(`dejavu ${command}`));
     }
   });
 
@@ -22,6 +22,10 @@ describe('cli', () => {
     assert.match(run('init', '--help').stdout, /adopt-existing/);
     assert.match(run('check', '-h').stdout, /Exits 1 when errors are found/);
     assert.match(run('help', 'orient').stdout, /--budget <tokens>/);
+    assert.match(run('help', 'handoff').stdout, /--task <text>/);
+    assert.match(run('help', 'resume').stdout, /--list/);
+    assert.match(run('help', 'learn').stdout, /--evidence <ref>/);
+    assert.match(run('help', 'reconcile').stdout, /--by <name>/);
   });
 
   test('prints the package version', () => {

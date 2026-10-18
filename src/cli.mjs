@@ -7,6 +7,7 @@ import { DEFAULT_BUDGET, orient, renderOrientation } from './orient.mjs';
 import { HandoffError, createHandoff, listHandoffs, resume } from './handoff.mjs';
 import { learn } from './learn.mjs';
 import { LessonError } from './lessons.mjs';
+import { accept, reject, report as reconcileReport, supersede } from './reconcile.mjs';
 
 const VERSION = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
@@ -19,6 +20,7 @@ Usage:
   dejavu handoff --task <text>  Record compact session state in .dejavu/handoffs/
   dejavu resume                 Show the latest open handoff
   dejavu learn --summary <text> Propose an evidence-backed lesson for review
+  dejavu reconcile              Review lessons; accept, reject, or supersede them
   dejavu help [command]         Show help
 
 Options:
@@ -115,6 +117,31 @@ Options:
   --dir <path>          Repository root (default: current directory)
   --dry-run             Print the proposal without writing it
   -h, --help            Show this help
+`;
+
+const RECONCILE_HELP = `Usage: dejavu reconcile [options]
+       dejavu reconcile accept <P-id> --by <name>
+       dejavu reconcile reject <P-id> --by <name> --reason <text>
+       dejavu reconcile supersede <old W-id> --with <new W-id> --by <name>
+
+Without an action, print a read-only review of .dejavu/proposals/ and
+.dejavu/wisdom/: metadata errors, broken evidence links, broken or one-sided
+supersession, evidence changed since acceptance, possible duplicates and
+contradictions, and proposals awaiting review. Exits 1 when errors are found.
+
+Actions change canonical knowledge and require a named human reviewer (--by).
+Agents must not run them on their own. Accepting creates a W-id wisdom entry,
+marks the proposal accepted_as that entry (it is kept as history), and marks
+lessons it supersedes. Nothing is deleted.
+
+Options:
+  --by <name>       Reviewer recorded in the lesson (required for actions)
+  --reason <text>   Why a proposal was rejected (required for reject)
+  --with <W-id>     Replacement lesson (required for supersede)
+  --dir <path>      Repository root (default: current directory)
+  --json            Print the review as JSON
+  --dry-run         Show which files an action would change without writing
+  -h, --help        Show this help
 `;
 
 class UsageError extends Error {}
@@ -335,6 +362,70 @@ function runLearn(args, out) {
   }
 }
 
+function runReconcile(args, out) {
+  const { values, positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      by: { type: 'string' },
+      reason: { type: 'string' },
+      with: { type: 'string' },
+      dir: { type: 'string', default: '.' },
+      json: { type: 'boolean', default: false },
+      'dry-run': { type: 'boolean', default: false },
+      help: { type: 'boolean', short: 'h', default: false },
+    },
+  });
+  if (values.help) {
+    out.log(RECONCILE_HELP);
+    return 0;
+  }
+  const [action, id, extra] = positionals;
+  const root = resolveDir([values.dir]);
+  const dryRun = values['dry-run'];
+
+  if (!action) {
+    const r = reconcileReport(root);
+    if (values.json) {
+      out.log(JSON.stringify(r, null, 2));
+      return r.errors.length ? 1 : 0;
+    }
+    for (const e of r.errors) out.error(`error: ${e}`);
+    for (const w of r.warnings) out.log(`warning: ${w}`);
+    if (r.pending.length) {
+      out.log(`\nAwaiting review (${r.pending.length}):`);
+      for (const p of r.pending) {
+        const notes = [`${p.confidence} confidence`, `${p.evidence} evidence`, ...(p.supersedes.length ? [`supersedes ${p.supersedes.join(', ')}`] : []), ...(p.similar.length ? [`similar to ${p.similar.join(', ')}`] : [])];
+        out.log(`  ${p.id}  ${p.title}  (${notes.join('; ')})`);
+      }
+      out.log('\nA maintainer decides with `dejavu reconcile accept|reject <id> --by <name>`.');
+    }
+    out.log(`\n${r.lessons} lesson(s) reviewed: ${r.errors.length} error(s), ${r.warnings.length} warning(s), ${r.pending.length} awaiting review.`);
+    return r.errors.length ? 1 : 0;
+  }
+
+  if (!['accept', 'reject', 'supersede'].includes(action)) throw new UsageError(`unknown reconcile action: ${action} (expected accept, reject, or supersede)`);
+  if (!id) throw new UsageError(`reconcile ${action} needs a lesson id`);
+  if (extra) throw new UsageError(`unexpected argument: ${extra}`);
+  if (action === 'supersede' && !values.with) throw new UsageError('reconcile supersede needs --with <new W-id>');
+  try {
+    const opts = { by: values.by, reason: values.reason, dryRun };
+    const result = action === 'accept' ? accept(root, id, opts)
+      : action === 'reject' ? reject(root, id, opts)
+        : supersede(root, id, values.with, opts);
+    const verb = dryRun ? 'would ' : '';
+    for (const c of result.changes) out.log(`  ${verb}${c.action.padEnd(6)} ${c.path}`);
+    const summary = action === 'accept' ? `Accepted ${id} as ${result.id}.`
+      : action === 'reject' ? `Rejected ${id}.` : `${id} is superseded by ${values.with}.`;
+    out.log(dryRun ? `Dry run: ${summary.replace(/\.$/, '')} (nothing written).` : `${summary} Review the diff and commit it.`);
+    return 0;
+  } catch (err) {
+    if (!(err instanceof LessonError)) throw err;
+    out.error(`dejavu reconcile: ${err.message}`);
+    return 1;
+  }
+}
+
 function runCheck(args, out) {
   const { values, positionals } = parseArgs({
     args,
@@ -364,7 +455,7 @@ export function main(argv, out = console) {
       case 'help':
       case '-h':
       case '--help':
-        out.log({ init: INIT_HELP, check: CHECK_HELP, orient: ORIENT_HELP, handoff: HANDOFF_HELP, resume: RESUME_HELP, learn: LEARN_HELP }[rest[0]] ?? HELP);
+        out.log({ init: INIT_HELP, check: CHECK_HELP, orient: ORIENT_HELP, handoff: HANDOFF_HELP, resume: RESUME_HELP, learn: LEARN_HELP, reconcile: RECONCILE_HELP }[rest[0]] ?? HELP);
         return 0;
       case '-v':
       case '--version':
@@ -382,6 +473,8 @@ export function main(argv, out = console) {
         return runResume(rest, out);
       case 'learn':
         return runLearn(rest, out);
+      case 'reconcile':
+        return runReconcile(rest, out);
       default:
         throw new UsageError(`unknown command: ${command}`);
     }
