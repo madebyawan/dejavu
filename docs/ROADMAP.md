@@ -11,7 +11,7 @@
 
 - [x] Compact agent-to-agent session handoffs (`dejavu handoff`, `dejavu resume`).
 - [x] Evidence-linked `dejavu learn` proposals with human approval.
-- [ ] `dejavu reconcile` for contradictions, stale entries, and supersession.
+- [x] `dejavu reconcile` for contradictions, stale entries, and supersession.
 - [ ] Pilot against Made by Awan, NoteFriends, Awan Sound Machines, and Awan Arcade.
 
 ## P2: optional extensions

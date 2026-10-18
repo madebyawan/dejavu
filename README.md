@@ -92,6 +92,29 @@ dejavu learn --summary "Deduplicate webhook events before processing" \
 
 The lesson is written to `.dejavu/proposals/P-NNNN-<summary>.md` with `status: proposed`. `orient` never shows proposals, and nothing promotes them automatically.
 
+### `dejavu reconcile`
+
+Without arguments, `reconcile` prints a read-only review of proposals and wisdom:
+
+- Missing or invalid metadata and duplicate IDs
+- Lessons without evidence, and broken evidence links
+- Missing or one-sided supersession
+- Accepted lessons whose local evidence files changed after acceptance
+- Possible duplicates or contradictions between accepted lessons
+- Proposals awaiting review, including any similar to existing wisdom
+
+It exits `1` when there are errors.
+
+Changing canonical knowledge requires a named reviewer:
+
+```sh
+dejavu reconcile accept P-0004 --by "Adam Wan"            # creates W-NNNN, marks superseded lessons
+dejavu reconcile reject P-0005 --by "Adam Wan" --reason "Not reproducible"
+dejavu reconcile supersede W-0002 --with W-0007 --by "Adam Wan"
+```
+
+Accepting copies the proposal into `wisdom/` with `accepted_by` and `accepted` dates. It keeps the proposal as history with `accepted_as`. Nothing is deleted. Use `--dry-run` to see which files would change. Agents should propose with `learn` and leave these decisions to maintainers.
+
 ### `dejavu check [dir]`
 
 Checks that `.dejavu/` has its required files and that local links in `.dejavu/`, `AGENTS.md`, and `CLAUDE.md` resolve. It also checks that installed skills have valid frontmatter. Errors include the file and line plus a suggested fix. The command exits `1` on errors, `2` on usage errors, and `0` otherwise. Warnings, such as an `AGENTS.md` that doesn't mention `.dejavu/`, don't cause a failure.
@@ -127,9 +150,9 @@ The canonical skill is [`skills/dejavu/SKILL.md`](skills/dejavu/SKILL.md). It te
 
 For a personal install, copy the folder: `cp -R skills/dejavu ~/.claude/skills/` or `cp -R skills/dejavu ~/.agents/skills/`. Run `/skills` in either agent to confirm it was found.
 
-## Planned
+## Roadmap
 
-`reconcile` (review, acceptance, and supersession) is planned but not implemented yet. See the [roadmap](docs/ROADMAP.md) and [issues](https://github.com/madebyawan/dejavu/issues).
+See the [roadmap](docs/ROADMAP.md) and [issues](https://github.com/madebyawan/dejavu/issues).
 
 ## Development
 
