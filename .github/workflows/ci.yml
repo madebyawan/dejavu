@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm test
+      - name: Smoke-test the packed tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+          tarball="$PWD/$(npm pack --silent)"
+          sample="$RUNNER_TEMP/sample"
+          mkdir -p "$sample" && cd "$sample"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "$tarball"
+          npm exec -- dejavu --version
+          npm exec -- dejavu init --mode structured --skills all
+          npm exec -- dejavu init --mode structured | grep -q "Created 0 file(s)"
+          npm exec -- dejavu check

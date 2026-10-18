@@ -3,7 +3,7 @@
 ## P0: usable local bootstrap
 
 - [x] Implement `dejavu init` to create the minimal `.dejavu/` structure without overwriting user files.
-- [ ] Implement `dejavu orient <task>` with source-linked, bounded task context.
+- [x] Implement `dejavu orient <task>` with source-linked, bounded task context.
 - [x] Add portable agent instructions and a basic validation command (`dejavu check`).
 - [x] Add fixtures, unit tests, and documentation. (CI and release packaging: #8.)
 

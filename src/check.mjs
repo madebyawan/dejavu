@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { KNOWLEDGE_DIR } from './templates.mjs';
 import { SKILL_TARGETS } from './init.mjs';
+import { frontmatter } from './markdown.mjs';
 
 const REQUIRED = [
   ['README.md', 'file'],
@@ -50,17 +51,6 @@ export function* localLinks(text) {
   }
 }
 
-function frontmatter(text) {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/.exec(text);
-  if (!match) return null;
-  const fields = {};
-  for (const line of match[1].split(/\r?\n/)) {
-    const kv = /^([A-Za-z_-]+):\s*(.*)$/.exec(line);
-    if (kv) fields[kv[1]] = kv[2].trim();
-  }
-  return fields;
-}
-
 export function check(root) {
   const errors = [];
   const warnings = [];
@@ -105,7 +95,7 @@ export function check(root) {
   for (const rel of Object.values(SKILL_TARGETS)) {
     const full = path.join(root, rel);
     if (!fs.existsSync(full)) continue;
-    const fields = frontmatter(fs.readFileSync(full, 'utf8'));
+    const { fields } = frontmatter(fs.readFileSync(full, 'utf8'));
     if (!fields || !fields.name || !fields.description) {
       errors.push(`${rel}: SKILL.md needs YAML frontmatter with name and description.`);
     }

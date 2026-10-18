@@ -3,6 +3,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { check } from './check.mjs';
 import { DEFAULT_MODE, MODES, SKILL_TARGETS, init } from './init.mjs';
+import { DEFAULT_BUDGET, orient, renderOrientation } from './orient.mjs';
 
 const VERSION = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
@@ -11,13 +12,14 @@ const HELP = `dejavu — Git-native knowledge for AI coding agents
 Usage:
   dejavu init [dir] [options]   Create missing Déjà Vu files (never overwrites)
   dejavu check [dir]            Validate .dejavu/ and local links
+  dejavu orient <task>          Print bounded, source-linked context for a task
   dejavu help [command]         Show help
 
 Options:
   -h, --help       Show help
   -v, --version    Show version
 
-Run \`dejavu help init\` for init options.
+Run \`dejavu help <command>\` for command options.
 `;
 
 const INIT_HELP = `Usage: dejavu init [dir] [options]
@@ -40,6 +42,20 @@ const CHECK_HELP = `Usage: dejavu check [dir]
 
 Verify that .dejavu/ has its required files and that local links in .dejavu/,
 AGENTS.md, and CLAUDE.md resolve. Exits 1 when errors are found.
+`;
+
+const ORIENT_HELP = `Usage: dejavu orient <task> [options]
+
+Rank sections of the repository's documentation and accepted .dejavu/
+knowledge (ontology, topology, epistemology, wisdom) against the task and print
+the most relevant excerpts with source links, within a token budget.
+Proposals, handoffs, and superseded entries are never included. Read-only.
+
+Options:
+  --dir <path>       Repository root (default: current directory)
+  --budget <tokens>  Maximum output size in estimated tokens (default: ${DEFAULT_BUDGET})
+  --json             Print machine-readable JSON instead of Markdown
+  -h, --help         Show this help
 `;
 
 class UsageError extends Error {}
@@ -115,6 +131,43 @@ function runInit(args, out) {
   return 0;
 }
 
+function runOrient(args, out) {
+  const { values, positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      dir: { type: 'string', default: '.' },
+      budget: { type: 'string', default: String(DEFAULT_BUDGET) },
+      json: { type: 'boolean', default: false },
+      help: { type: 'boolean', short: 'h', default: false },
+    },
+  });
+  if (values.help) {
+    out.log(ORIENT_HELP);
+    return 0;
+  }
+  const task = positionals.join(' ').trim();
+  if (!task) throw new UsageError('orient needs a task description, e.g. dejavu orient "fix login redirect"');
+  const budget = Number(values.budget);
+  if (!Number.isInteger(budget) || budget < 200) throw new UsageError(`--budget must be an integer of at least 200: ${values.budget}`);
+  const root = resolveDir([values.dir]);
+
+  const result = orient(root, task, { budget });
+  if (values.json) {
+    out.log(JSON.stringify({
+      task, budget,
+      readFirst: result.instructions,
+      selected: result.selected.map(({ path: p, line, heading, kind, score }) => ({ path: p, line, heading, kind, score: Number(score.toFixed(4)) })),
+      chunks: result.chunkCount,
+      files: result.fileCount,
+      totalChars: result.totalChars,
+    }, null, 2));
+  } else {
+    out.log(renderOrientation(result).trimEnd());
+  }
+  return 0;
+}
+
 function runCheck(args, out) {
   const { values, positionals } = parseArgs({
     args,
@@ -144,7 +197,7 @@ export function main(argv, out = console) {
       case 'help':
       case '-h':
       case '--help':
-        out.log({ init: INIT_HELP, check: CHECK_HELP }[rest[0]] ?? HELP);
+        out.log({ init: INIT_HELP, check: CHECK_HELP, orient: ORIENT_HELP }[rest[0]] ?? HELP);
         return 0;
       case '-v':
       case '--version':
@@ -154,6 +207,8 @@ export function main(argv, out = console) {
         return runInit(rest, out);
       case 'check':
         return runCheck(rest, out);
+      case 'orient':
+        return runOrient(rest, out);
       default:
         throw new UsageError(`unknown command: ${command}`);
     }

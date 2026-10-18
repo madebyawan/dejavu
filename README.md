@@ -51,6 +51,18 @@ Every mode writes `.dejavu/index.md`, a list of links to your documentation with
 
 If `AGENTS.md` or `CLAUDE.md` already exist, init leaves them alone and suggests a one-line pointer you can add yourself.
 
+### `dejavu orient <task>`
+
+Prints the sections of your documentation and accepted `.dejavu/` knowledge that best match a task. Each excerpt has a `path:line` link and a label: `source` (an authoritative document), `accepted lesson` (reviewed wisdom), `known`, `assumption`, `open question`, or `knowledge` (an ontology or topology entry to verify). Output stays within a token budget and ends with a summary comparing its size to loading every document. Proposals, handoffs, and superseded entries are never included.
+
+```sh
+dejavu orient "fix duplicate webhook processing"
+dejavu orient "add a database migration" --budget 800 --dir ../payments
+dejavu orient "release process" --json     # path, line, label, and score per excerpt
+```
+
+Ranking is deterministic keyword relevance (BM25) over Markdown sections, so the same repository and task always give the same output.
+
 ### `dejavu check [dir]`
 
 Checks that `.dejavu/` has its required files and that local links in `.dejavu/`, `AGENTS.md`, and `CLAUDE.md` resolve. It also checks that installed skills have valid frontmatter. Errors include the file and line plus a suggested fix. The command exits `1` on errors, `2` on usage errors, and `0` otherwise. Warnings, such as an `AGENTS.md` that doesn't mention `.dejavu/`, don't cause a failure.
@@ -88,7 +100,7 @@ For a personal install, copy the folder: `cp -R skills/dejavu ~/.claude/skills/`
 
 ## Planned
 
-`orient`, `learn`, `reconcile`, and session handoff capture are planned but not implemented yet. See the [roadmap](docs/ROADMAP.md) and [issues](https://github.com/madebyawan/dejavu/issues).
+`learn`, `reconcile`, and session handoff capture are planned but not implemented yet. See the [roadmap](docs/ROADMAP.md) and [issues](https://github.com/madebyawan/dejavu/issues).
 
 ## Development
 
@@ -96,7 +108,7 @@ For a personal install, copy the folder: `cp -R skills/dejavu ~/.claude/skills/`
 npm test
 ```
 
-Tests use Node's built-in test runner and temporary directories.
+Tests use Node's built-in test runner, temporary directories, and sample repositories in `test/fixtures/`. See [docs/RELEASING.md](docs/RELEASING.md) for CI, versioning, and releases.
 
 ## License
 

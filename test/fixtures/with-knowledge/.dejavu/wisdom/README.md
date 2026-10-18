@@ -1,0 +1,3 @@
+# Wisdom
+
+Accepted lessons.

@@ -48,7 +48,7 @@ function titleOf(text, rel) {
  * create, so dry runs and structured mode index what will exist.
  * Returns { entryPoints: [{path,title}], roots: [{root, files, omitted}] }.
  */
-export function discover(root, { extraRoots = [], planned = new Map(), entryPointsOnly = false } = {}) {
+export function discover(root, { extraRoots = [], planned = new Map(), entryPointsOnly = false, limit = MAX_PER_ROOT } = {}) {
   const read = (rel) => {
     if (planned.has(rel)) return planned.get(rel);
     try {
@@ -99,8 +99,8 @@ export function discover(root, { extraRoots = [], planned = new Map(), entryPoin
     roots.push({
       root: name,
       heading: isFile ? name : `${name}/`,
-      files: unique.slice(0, MAX_PER_ROOT).map(describe),
-      omitted: Math.max(0, unique.length - MAX_PER_ROOT),
+      files: unique.slice(0, limit).map(describe),
+      omitted: Math.max(0, unique.length - limit),
     });
   }
   return { entryPoints, roots };

@@ -18,6 +18,13 @@ export function tempRepo(files = {}) {
   return dir;
 }
 
+/** Copy test/fixtures/<name> into a fresh temp directory. */
+export function fixtureRepo(name) {
+  const dir = tempRepo();
+  fs.cpSync(new URL(`./fixtures/${name}`, import.meta.url), dir, { recursive: true });
+  return dir;
+}
+
 /** Run the CLI in-process and capture its output. */
 export function run(...argv) {
   const stdout = [];
