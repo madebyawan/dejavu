@@ -5,6 +5,8 @@ import { check } from './check.mjs';
 import { DEFAULT_MODE, MODES, SKILL_TARGETS, init } from './init.mjs';
 import { DEFAULT_BUDGET, orient, renderOrientation } from './orient.mjs';
 import { HandoffError, createHandoff, listHandoffs, resume } from './handoff.mjs';
+import { learn } from './learn.mjs';
+import { LessonError } from './lessons.mjs';
 
 const VERSION = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
@@ -16,6 +18,7 @@ Usage:
   dejavu orient <task>          Print bounded, source-linked context for a task
   dejavu handoff --task <text>  Record compact session state in .dejavu/handoffs/
   dejavu resume                 Show the latest open handoff
+  dejavu learn --summary <text> Propose an evidence-backed lesson for review
   dejavu help [command]         Show help
 
 Options:
@@ -90,6 +93,28 @@ Options:
   --list         List all handoffs instead
   --dir <path>   Repository root (default: current directory)
   -h, --help     Show this help
+`;
+
+const LEARN_HELP = `Usage: dejavu learn --summary <text> --evidence <ref> [options]
+
+Write a lesson proposal to .dejavu/proposals/P-NNNN-<summary>.md for a
+maintainer to review. Proposals are never treated as accepted knowledge and
+are never promoted automatically.
+
+Required:
+  --summary <text>      One-sentence lesson
+  --context <text>      What happened
+  --cause <text>        Root cause
+  --prevention <text>   How to avoid it next time
+  --evidence <ref>      URL, #12 or owner/repo#12, commit SHA, or file[:line]
+                        (repeatable; local files and commits must exist)
+
+Options:
+  --confidence <level>  high, medium (default), or low
+  --supersedes <W-id>   Accepted lesson this would replace (repeatable)
+  --dir <path>          Repository root (default: current directory)
+  --dry-run             Print the proposal without writing it
+  -h, --help            Show this help
 `;
 
 class UsageError extends Error {}
@@ -275,6 +300,41 @@ function runResume(args, out) {
   return 0;
 }
 
+function runLearn(args, out) {
+  const { values, positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      summary: { type: 'string' },
+      context: { type: 'string' },
+      cause: { type: 'string' },
+      prevention: { type: 'string' },
+      evidence: { type: 'string', multiple: true, default: [] },
+      confidence: { type: 'string', default: 'medium' },
+      supersedes: { type: 'string', multiple: true, default: [] },
+      dir: { type: 'string', default: '.' },
+      'dry-run': { type: 'boolean', default: false },
+      help: { type: 'boolean', short: 'h', default: false },
+    },
+  });
+  if (values.help) {
+    out.log(LEARN_HELP);
+    return 0;
+  }
+  if (positionals.length) throw new UsageError(`unexpected argument: ${positionals[0]} (use --summary "<text>")`);
+  const root = resolveDir([values.dir]);
+  try {
+    const result = learn(root, { ...values, dryRun: values['dry-run'] });
+    if (values['dry-run']) out.log(result.contents.trimEnd());
+    else out.log(`Proposed ${result.id}: ${result.path}\nA maintainer reviews it with \`dejavu reconcile\`; it is not accepted knowledge yet.`);
+    return 0;
+  } catch (err) {
+    if (!(err instanceof LessonError)) throw err;
+    out.error(`dejavu learn: ${err.message}`);
+    return 1;
+  }
+}
+
 function runCheck(args, out) {
   const { values, positionals } = parseArgs({
     args,
@@ -304,7 +364,7 @@ export function main(argv, out = console) {
       case 'help':
       case '-h':
       case '--help':
-        out.log({ init: INIT_HELP, check: CHECK_HELP, orient: ORIENT_HELP, handoff: HANDOFF_HELP, resume: RESUME_HELP }[rest[0]] ?? HELP);
+        out.log({ init: INIT_HELP, check: CHECK_HELP, orient: ORIENT_HELP, handoff: HANDOFF_HELP, resume: RESUME_HELP, learn: LEARN_HELP }[rest[0]] ?? HELP);
         return 0;
       case '-v':
       case '--version':
@@ -320,6 +380,8 @@ export function main(argv, out = console) {
         return runHandoff(rest, out);
       case 'resume':
         return runResume(rest, out);
+      case 'learn':
+        return runLearn(rest, out);
       default:
         throw new UsageError(`unknown command: ${command}`);
     }

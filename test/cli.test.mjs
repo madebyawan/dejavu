@@ -13,7 +13,7 @@ describe('cli', () => {
       assert.equal(code, 0);
       assert.match(stdout, /dejavu init \[dir\]/);
       assert.match(stdout, /dejavu check \[dir\]/);
-      assert.doesNotMatch(stdout, /learn|reconcile/, 'unshipped commands are not advertised');
+      assert.doesNotMatch(stdout, /reconcile/, 'unshipped commands are not advertised');
     }
   });
 

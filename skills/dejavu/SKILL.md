@@ -20,7 +20,7 @@ At the end of a session, record task scope, current branch/PR, changed files, te
 
 ## Learn
 
-Propose a lesson only when it is supported by a concrete mistake, bug, review, test, or PR. Include evidence and a prevention step. Place it in `.dejavu/proposals/` until reviewed.
+Propose a lesson only when it is supported by a concrete mistake, bug, review, test, or PR. Include evidence and a prevention step. Place it in `.dejavu/proposals/` until reviewed. With the CLI: `dejavu learn --summary ... --context ... --cause ... --prevention ... --evidence <ref>`. Never move a proposal into `wisdom/` yourself.
 
 ## Reconcile
 

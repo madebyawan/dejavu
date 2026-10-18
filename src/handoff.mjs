@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { changedFiles, changedSince, currentBranch, defaultBase, headCommit, isRepo } from './git.mjs';
+import { slugify } from './lessons.mjs';
 import { frontmatter, sections } from './markdown.mjs';
 import { KNOWLEDGE_DIR } from './templates.mjs';
 
@@ -29,8 +30,6 @@ export function findSecret(text) {
   return null;
 }
 
-const slugify = (text) => text.toLowerCase().normalize('NFKD').replace(/[^\w\s-]/g, '').trim()
-  .replace(/[\s_-]+/g, '-').slice(0, 48).replace(/-+$/, '') || 'handoff';
 
 function validate(fields) {
   for (const [name, values] of Object.entries(fields)) {
@@ -96,7 +95,7 @@ export function createHandoff(root, options) {
     pr: pr && /^\d+$/.test(pr) ? `#${pr}` : pr, files, tests, questions, next,
   });
 
-  const stem = `${date}-${slugify(task)}`;
+  const stem = `${date}-${slugify(task, 'handoff')}`;
   let rel = `${HANDOFF_DIR}/${stem}.md`;
   for (let n = 2; fs.existsSync(path.join(root, rel)); n++) rel = `${HANDOFF_DIR}/${stem}-${n}.md`;
   if (!dryRun) {
