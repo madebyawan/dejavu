@@ -23,3 +23,11 @@ The project knowledge folder is `.dejavu/`:
 - **Proposals**: unreviewed learning candidates, never treated as canonical.
 
 Lessons use frontmatter (`id`, `status`, `confidence`, `created`, `supersedes`, `superseded_by`) and sections for Context, Cause, Evidence, and Prevention. Proposals are `P-NNNN` with `status: proposed`; accepted wisdom is `W-NNNN` with `status: accepted`. `dejavu learn` writes proposals; `dejavu reconcile` reviews them, and its `accept`, `reject`, and `supersede` actions record the reviewer (`accepted_by`, `rejected_by`, `superseded_by_reviewer`). Accepted proposals stay in `proposals/` with `accepted_as`, so history is never deleted. Each lesson should include a stable ID, summary, context, evidence (permalinks where possible), confidence, status, and supersession references. Never turn an agent guess into a project fact without review.
+
+## Proposed compiled wiki (not implemented)
+
+A future `.dejavu/wiki/` directory would contain short, reviewed, source-linked topic syntheses: the **current interpretation** of multiple authoritative documents. Each accepted page must state its provenance, confidence/uncertainty, verification status and supersession. Unreviewed candidates would be kept separately and would never appear in `orient`.
+
+This complements—not replaces—the existing document index (navigation), ontology (terminology), topology (connections), epistemology (certainty), Wisdom (preventive lessons) and handoffs (short-lived session state). See [Knowledge Compiler RFC](KNOWLEDGE-COMPILER.md) and [#19](https://github.com/madebyawan/dejavu/issues/19).
+
+**Publication boundary:** Public examples and fixtures must be fictional or explicitly public. Identifiers or contents from nonpublic projects must remain outside this repository and all its public artifacts.
