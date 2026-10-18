@@ -11,13 +11,16 @@ Déjà Vu follows [Semantic Versioning](https://semver.org/). Until 1.0.0, minor
 
 Users can install a release without npm: `npm install https://github.com/madebyawan/dejavu/releases/download/vX.Y.Z/dejavu-memory-X.Y.Z.tgz`.
 
-## npm publishing (not enabled)
+## npm publishing
 
-The package is `"private": true` and nothing publishes to npm. Before that changes, a maintainer must:
+The package is published to npm as [`dejavu-memory`](https://www.npmjs.com/package/dejavu-memory); the executable is `dejavu`. After the tag's GitHub release succeeds, a maintainer logged in to npm publishes from a clean checkout of the tag:
 
-- The package name is `dejavu-memory` (chosen 2026-10-18; `dejavu` and `dejavu-cli` are taken). Confirm it is still free with `npm view dejavu-memory` before the first publish. The executable stays `dejavu`.
-- Confirm the shipped commands work on real repositories.
-- Remove `"private": true`, and add an `npm publish --provenance` step with an `NPM_TOKEN` secret.
+```sh
+git checkout vX.Y.Z
+npm publish   # prepublishOnly runs npm test first
+```
+
+Publishing from CI with `npm publish --provenance` and an `NPM_TOKEN` secret is a possible follow-up.
 
 ## CI
 

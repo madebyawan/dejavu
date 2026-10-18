@@ -26,12 +26,14 @@ test('extracts one version section', () => {
   assert.equal(releaseNotes(CHANGELOG, '0.3.0'), null);
 });
 
-test('package version is valid semver and the changelog has an Unreleased section', () => {
+test('package is publishable and the changelog has notes for its version', () => {
   const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(pkg.name, 'dejavu-memory');
   assert.deepEqual(Object.keys(pkg.bin), ['dejavu']);
   assert.match(pkg.version, /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/);
-  assert.equal(pkg.private, true, 'stay private until a package name and release are approved');
+  assert.notEqual(pkg.private, true, 'published to npm');
+  assert.deepEqual(pkg.files, ['bin/', 'src/', 'skills/']);
   const changelog = fs.readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8');
-  assert.ok(releaseNotes(changelog, 'Unreleased'));
+  assert.match(changelog, /^## \[Unreleased\]$/m);
+  assert.ok(releaseNotes(changelog, pkg.version), `CHANGELOG.md has notes for ${pkg.version}`);
 });
