@@ -4,9 +4,11 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
-### Added
+## [0.1.0] - 2026-10-18
 
-- Package name `dejavu-memory`; the executable is `dejavu`.
+First release, published to npm as `dejavu-memory`. The command is `dejavu`.
+
+### Added
 
 - `dejavu init` with `minimal` (default), `structured`, and `adopt-existing` modes; never overwrites existing files.
 - `dejavu orient <task>`: bounded, source-linked, labeled context from docs and accepted knowledge.

@@ -17,16 +17,15 @@ Déjà Vu helps agents inherit a project's architecture, decisions, constraints,
 
 ## Quick start
 
-Requires Node.js 22 or later. There are no runtime dependencies. The npm package will be `dejavu-memory` (the command is `dejavu`). It is not published yet, so run it from a checkout:
+Requires Node.js 22 or later. There are no runtime dependencies. The npm package is `dejavu-memory` and the command is `dejavu`:
 
 ```sh
-git clone https://github.com/madebyawan/dejavu.git
 cd your-project
-node ../dejavu/bin/dejavu.mjs init
-node ../dejavu/bin/dejavu.mjs check
+npx dejavu-memory init      # or: npm install -g dejavu-memory && dejavu init
+npx dejavu-memory check
 ```
 
-After installing it into a project (`npm install --save-dev ../dejavu`), you can run `npm exec -- dejavu init` instead.
+To run from a checkout instead, use `node path/to/dejavu/bin/dejavu.mjs <command>`.
 
 `init` only creates files that are missing. It never modifies, moves, or deletes existing files, so running it again is safe. Use `--dry-run` to preview what it would create.
 

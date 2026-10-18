@@ -2,7 +2,22 @@
   "name": "dejavu-memory",
   "version": "0.1.0",
   "description": "Git-native knowledge and memory harness for AI coding agents.",
-  "private": true,
+  "keywords": [
+    "ai",
+    "agents",
+    "coding-agents",
+    "claude-code",
+    "codex",
+    "knowledge",
+    "memory",
+    "documentation",
+    "cli"
+  ],
+  "author": "Adam Wan",
+  "homepage": "https://github.com/madebyawan/dejavu#readme",
+  "bugs": {
+    "url": "https://github.com/madebyawan/dejavu/issues"
+  },
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -17,7 +32,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test \"test/*.test.mjs\""
+    "test": "node --test \"test/*.test.mjs\"",
+    "prepublishOnly": "npm test"
   },
   "repository": {
     "type": "git",
