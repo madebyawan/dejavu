@@ -63,6 +63,35 @@ dejavu orient "release process" --json     # path, line, label, and score per ex
 
 Ranking is deterministic keyword relevance (BM25) over Markdown sections, so the same repository and task always give the same output.
 
+### `dejavu handoff` and `dejavu resume`
+
+`handoff` writes compact session state to `.dejavu/handoffs/YYYY-MM-DD-<task>.md`. It reads the branch, commit, and changed files from Git, and you supply the rest. Items over 500 characters, or that look like credentials (tokens, keys, `password=`…), are rejected, which keeps transcripts and secrets out. Existing handoffs are never overwritten.
+
+```sh
+dejavu handoff --task "Add login redirect" --pr 42 \
+  --tests "npm test: 53 passed" \
+  --question "Should redirects keep query params?" \
+  --next "Handle expired sessions"
+dejavu resume          # newest open handoff, preferring the current branch
+dejavu resume --list   # every handoff with its status
+```
+
+`resume` notes when the handoff came from another branch or files have changed since its commit. Set `status: closed` in a handoff's frontmatter when it is done.
+
+### `dejavu learn`
+
+Proposes a lesson for a maintainer to review. A lesson needs a summary, context, cause, prevention step, and at least one piece of evidence: a URL, `#12` or `owner/repo#12`, a commit in the repository, or an existing `file[:line]`. Local evidence and commits are checked before anything is written.
+
+```sh
+dejavu learn --summary "Deduplicate webhook events before processing" \
+  --context "A retried delivery charged a customer twice." \
+  --cause "The worker processed events without checking the idempotency key." \
+  --prevention "Insert with a unique key; skip on conflict." \
+  --evidence "#88" --evidence src/webhooks/handler.js:42 --confidence high
+```
+
+The lesson is written to `.dejavu/proposals/P-NNNN-<summary>.md` with `status: proposed`. `orient` never shows proposals, and nothing promotes them automatically.
+
 ### `dejavu check [dir]`
 
 Checks that `.dejavu/` has its required files and that local links in `.dejavu/`, `AGENTS.md`, and `CLAUDE.md` resolve. It also checks that installed skills have valid frontmatter. Errors include the file and line plus a suggested fix. The command exits `1` on errors, `2` on usage errors, and `0` otherwise. Warnings, such as an `AGENTS.md` that doesn't mention `.dejavu/`, don't cause a failure.
@@ -100,7 +129,7 @@ For a personal install, copy the folder: `cp -R skills/dejavu ~/.claude/skills/`
 
 ## Planned
 
-`learn`, `reconcile`, and session handoff capture are planned but not implemented yet. See the [roadmap](docs/ROADMAP.md) and [issues](https://github.com/madebyawan/dejavu/issues).
+`reconcile` (review, acceptance, and supersession) is planned but not implemented yet. See the [roadmap](docs/ROADMAP.md) and [issues](https://github.com/madebyawan/dejavu/issues).
 
 ## Development
 

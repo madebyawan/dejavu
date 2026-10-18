@@ -82,6 +82,7 @@ const lessonFormat = (prefix, status) => `\`\`\`markdown
 id: ${prefix}-0001
 status: ${status}
 confidence: high | medium | low
+created: YYYY-MM-DD
 supersedes: []
 superseded_by: []
 ---
@@ -89,6 +90,7 @@ superseded_by: []
 # One-sentence summary
 
 ## Context
+## Cause
 ## Evidence
 ## Prevention
 \`\`\``;
@@ -104,16 +106,16 @@ ${lessonFormat('W', 'accepted')}
 
 const proposals = `# Proposals
 
-Unreviewed lesson candidates. Nothing here is canonical. A maintainer accepts a proposal by moving it to [wisdom](../wisdom/README.md) and setting \`status: accepted\`.
+Unreviewed lesson candidates. Nothing here is canonical, and agents never promote proposals themselves. A maintainer reviews them and accepts them into [wisdom](../wisdom/README.md).
 
-Use one file per proposal, named \`P-NNNN-short-slug.md\`, and cite concrete evidence (bug, review, test, or PR):
+Create one with \`dejavu learn --summary "..." --evidence <ref> ...\`, or write \`P-NNNN-short-slug.md\` by hand, citing concrete evidence (bug, review, test, PR, or commit):
 
 ${lessonFormat('P', 'proposed')}
 `;
 
 const handoffs = `# Handoffs
 
-Concise, task-specific session state for the next agent or maintainer. Use one file per session, named \`YYYY-MM-DD-short-slug.md\`, recording:
+Concise, task-specific session state for the next agent or maintainer. Create one with \`dejavu handoff --task "..."\` and read the latest with \`dejavu resume\`, or write \`YYYY-MM-DD-short-slug.md\` by hand, recording:
 
 - Task scope and current branch or PR
 - Changed files
@@ -121,7 +123,7 @@ Concise, task-specific session state for the next agent or maintainer. Use one f
 - Unresolved issues
 - Concrete next actions
 
-Never include secrets or full transcripts.
+Set \`status: closed\` in the frontmatter when a handoff is done. Never include secrets or full transcripts.
 `;
 
 export function knowledgeFiles() {
