@@ -19,7 +19,7 @@ The project knowledge folder is `.dejavu/`:
 - **Topology**: relationships between systems, modules, and responsibilities.
 - **Epistemology**: what is known, uncertain, assumed, or superseded; links to evidence.
 - **Wisdom**: accepted lessons, including mistakes, root causes, and prevention.
-- **Handoffs**: concise, task-specific session state.
+- **Handoffs**: concise, task-specific session state: frontmatter (`date`, `created`, `branch`, `commit`, `pr`, `status: open|closed`) and sections for branch and PR, changed files, tests, unresolved questions, and next steps. Created by `dejavu handoff`, read by `dejavu resume`; never included in `orient`.
 - **Proposals**: unreviewed learning candidates, never treated as canonical.
 
 Each lesson should include a stable ID, summary, context, evidence (permalinks where possible), confidence, status, and supersession references. Never turn an agent guess into a project fact without review.

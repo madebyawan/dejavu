@@ -16,7 +16,7 @@ Use this skill when entering an unfamiliar repository, starting a new task, fini
 
 ## Handoff
 
-Record task scope, current branch/PR, changed files, tests run and results, unresolved issues, and concrete next actions in `.dejavu/handoffs/`. Do not include secrets or full transcripts.
+At the end of a session, record task scope, current branch/PR, changed files, tests run and results, unresolved issues, and concrete next actions in `.dejavu/handoffs/`. With the CLI: `dejavu handoff --task "..." --tests "..." --question "..." --next "..."`. When starting, run `dejavu resume` to pick up the latest open handoff. Do not include secrets or full transcripts.
 
 ## Learn
 

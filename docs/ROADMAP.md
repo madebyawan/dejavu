@@ -9,7 +9,7 @@
 
 ## P1: memory lifecycle
 
-- [ ] Compact agent-to-agent session handoffs.
+- [x] Compact agent-to-agent session handoffs (`dejavu handoff`, `dejavu resume`).
 - [ ] Evidence-linked `dejavu learn` proposals with human approval.
 - [ ] `dejavu reconcile` for contradictions, stale entries, and supersession.
 - [ ] Pilot against Made by Awan, NoteFriends, Awan Sound Machines, and Awan Arcade.

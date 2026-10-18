@@ -113,7 +113,7 @@ ${lessonFormat('P', 'proposed')}
 
 const handoffs = `# Handoffs
 
-Concise, task-specific session state for the next agent or maintainer. Use one file per session, named \`YYYY-MM-DD-short-slug.md\`, recording:
+Concise, task-specific session state for the next agent or maintainer. Create one with \`dejavu handoff --task "..."\` and read the latest with \`dejavu resume\`, or write \`YYYY-MM-DD-short-slug.md\` by hand, recording:
 
 - Task scope and current branch or PR
 - Changed files
@@ -121,7 +121,7 @@ Concise, task-specific session state for the next agent or maintainer. Use one f
 - Unresolved issues
 - Concrete next actions
 
-Never include secrets or full transcripts.
+Set \`status: closed\` in the frontmatter when a handoff is done. Never include secrets or full transcripts.
 `;
 
 export function knowledgeFiles() {

@@ -4,6 +4,7 @@ import { parseArgs } from 'node:util';
 import { check } from './check.mjs';
 import { DEFAULT_MODE, MODES, SKILL_TARGETS, init } from './init.mjs';
 import { DEFAULT_BUDGET, orient, renderOrientation } from './orient.mjs';
+import { HandoffError, createHandoff, listHandoffs, resume } from './handoff.mjs';
 
 const VERSION = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
@@ -13,6 +14,8 @@ Usage:
   dejavu init [dir] [options]   Create missing Déjà Vu files (never overwrites)
   dejavu check [dir]            Validate .dejavu/ and local links
   dejavu orient <task>          Print bounded, source-linked context for a task
+  dejavu handoff --task <text>  Record compact session state in .dejavu/handoffs/
+  dejavu resume                 Show the latest open handoff
   dejavu help [command]         Show help
 
 Options:
@@ -56,6 +59,37 @@ Options:
   --budget <tokens>  Maximum output size in estimated tokens (default: ${DEFAULT_BUDGET})
   --json             Print machine-readable JSON instead of Markdown
   -h, --help         Show this help
+`;
+
+const HANDOFF_HELP = `Usage: dejavu handoff --task <text> [options]
+
+Write a compact handoff to .dejavu/handoffs/YYYY-MM-DD-<task>.md. Branch,
+commit, and changed files (since the default branch, plus uncommitted) are read
+from Git. Existing handoffs are never overwritten. Items longer than 500
+characters or that look like secrets are rejected.
+
+Options:
+  --task <text>       What the session was doing (required)
+  --pr <number|url>   Pull request
+  --tests <text>      Test command and result, e.g. "npm test: 53 passed" (repeatable)
+  --question <text>   Unresolved question or issue (repeatable)
+  --next <text>       Concrete next step (repeatable)
+  --file <path>       Extra changed file to list (repeatable)
+  --dir <path>        Repository root (default: current directory)
+  --dry-run           Print the handoff without writing it
+  -h, --help          Show this help
+`;
+
+const RESUME_HELP = `Usage: dejavu resume [options]
+
+Print the newest open handoff, preferring one written on the current branch,
+with notes about branch mismatches and files changed since it was written.
+Handoffs with "status: closed" in their frontmatter are skipped.
+
+Options:
+  --list         List all handoffs instead
+  --dir <path>   Repository root (default: current directory)
+  -h, --help     Show this help
 `;
 
 class UsageError extends Error {}
@@ -168,6 +202,79 @@ function runOrient(args, out) {
   return 0;
 }
 
+function runHandoff(args, out) {
+  const { values, positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      task: { type: 'string' },
+      pr: { type: 'string' },
+      tests: { type: 'string', multiple: true, default: [] },
+      question: { type: 'string', multiple: true, default: [] },
+      next: { type: 'string', multiple: true, default: [] },
+      file: { type: 'string', multiple: true, default: [] },
+      dir: { type: 'string', default: '.' },
+      'dry-run': { type: 'boolean', default: false },
+      help: { type: 'boolean', short: 'h', default: false },
+    },
+  });
+  if (values.help) {
+    out.log(HANDOFF_HELP);
+    return 0;
+  }
+  if (positionals.length) throw new UsageError(`unexpected argument: ${positionals[0]} (use --task "<text>")`);
+  if (!values.task?.trim()) throw new UsageError('handoff needs --task "<what the session was doing>"');
+  const root = resolveDir([values.dir]);
+  try {
+    const result = createHandoff(root, {
+      task: values.task.trim(), pr: values.pr, tests: values.tests, questions: values.question,
+      next: values.next, files: values.file, dryRun: values['dry-run'],
+    });
+    if (values['dry-run']) out.log(result.contents.trimEnd());
+    else out.log(`Wrote ${result.path}`);
+    for (const w of result.warnings) out.log(`Note: ${w}`);
+    return 0;
+  } catch (err) {
+    if (!(err instanceof HandoffError)) throw err;
+    out.error(`dejavu handoff: ${err.message}`);
+    return 1;
+  }
+}
+
+function runResume(args, out) {
+  const { values, positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      list: { type: 'boolean', default: false },
+      dir: { type: 'string', default: '.' },
+      help: { type: 'boolean', short: 'h', default: false },
+    },
+  });
+  if (values.help) {
+    out.log(RESUME_HELP);
+    return 0;
+  }
+  if (positionals.length) throw new UsageError(`unexpected argument: ${positionals[0]}`);
+  const root = resolveDir([values.dir]);
+  if (values.list) {
+    const all = listHandoffs(root);
+    if (!all.length) out.log('No handoffs yet. Record one with `dejavu handoff --task "..."`.');
+    for (const h of all) out.log(`${(h.fields.status ?? 'open').padEnd(7)} ${h.path}  ${h.fields.branch ? `[${h.fields.branch}] ` : ''}${h.title}`);
+    return 0;
+  }
+  const { handoff, notes } = resume(root);
+  if (!handoff) {
+    out.log('No open handoffs. Record one with `dejavu handoff --task "..."`.');
+    return 0;
+  }
+  out.log(`Resuming from ${handoff.path}`);
+  for (const n of notes) out.log(`Note: ${n}`);
+  out.log('');
+  out.log(handoff.text.trimEnd());
+  return 0;
+}
+
 function runCheck(args, out) {
   const { values, positionals } = parseArgs({
     args,
@@ -197,7 +304,7 @@ export function main(argv, out = console) {
       case 'help':
       case '-h':
       case '--help':
-        out.log({ init: INIT_HELP, check: CHECK_HELP, orient: ORIENT_HELP }[rest[0]] ?? HELP);
+        out.log({ init: INIT_HELP, check: CHECK_HELP, orient: ORIENT_HELP, handoff: HANDOFF_HELP, resume: RESUME_HELP }[rest[0]] ?? HELP);
         return 0;
       case '-v':
       case '--version':
@@ -209,6 +316,10 @@ export function main(argv, out = console) {
         return runCheck(rest, out);
       case 'orient':
         return runOrient(rest, out);
+      case 'handoff':
+        return runHandoff(rest, out);
+      case 'resume':
+        return runResume(rest, out);
       default:
         throw new UsageError(`unknown command: ${command}`);
     }
