@@ -1,0 +1,26 @@
+{
+  "name": "dejavu",
+  "version": "0.1.0",
+  "description": "Git-native knowledge and memory harness for AI coding agents.",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "dejavu": "bin/dejavu.mjs"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "skills/"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/madebyawan/dejavu.git"
+  }
+}
