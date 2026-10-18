@@ -12,7 +12,7 @@
 - [x] Compact agent-to-agent session handoffs (`dejavu handoff`, `dejavu resume`).
 - [x] Evidence-linked `dejavu learn` proposals with human approval.
 - [x] `dejavu reconcile` for contradictions, stale entries, and supersession.
-- [ ] Pilot against Made by Awan, NoteFriends, Awan Sound Machines, and Awan Arcade. Phase 1 (local measurement) is done; see [PILOT.md](PILOT.md).
+- [ ] Pilot across representative repositories without publishing any nonpublic repository identities or content. Phase 1 aggregate local measurements are documented in [PILOT.md](PILOT.md).
 
 ## P2: optional extensions
 
