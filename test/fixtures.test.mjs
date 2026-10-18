@@ -3,7 +3,7 @@ import { describe, test } from 'node:test';
 import { fixtureRepo, read, run, snapshot, tempRepo } from './helpers.mjs';
 
 const MODES = ['minimal', 'structured', 'adopt-existing'];
-const FIXTURES = ['existing-docs', 'nonstandard'];
+const FIXTURES = ['existing-docs', 'nonstandard', 'with-knowledge'];
 
 // Every mode on every sample repository: user files survive, reruns are
 // no-ops, and the result passes `dejavu check`.

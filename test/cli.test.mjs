@@ -13,7 +13,7 @@ describe('cli', () => {
       assert.equal(code, 0);
       assert.match(stdout, /dejavu init \[dir\]/);
       assert.match(stdout, /dejavu check \[dir\]/);
-      assert.doesNotMatch(stdout, /orient|learn|reconcile/, 'unshipped commands are not advertised');
+      assert.doesNotMatch(stdout, /learn|reconcile|handoff/, 'unshipped commands are not advertised');
     }
   });
 
@@ -21,6 +21,7 @@ describe('cli', () => {
     assert.match(run('help', 'init').stdout, /--mode <mode>/);
     assert.match(run('init', '--help').stdout, /adopt-existing/);
     assert.match(run('check', '-h').stdout, /Exits 1 when errors are found/);
+    assert.match(run('help', 'orient').stdout, /--budget <tokens>/);
   });
 
   test('prints the package version', () => {
@@ -30,7 +31,7 @@ describe('cli', () => {
   test('usage errors exit 2 without writing files', () => {
     const dir = tempRepo();
     const cases = [
-      [['orient', 'task'], /unknown command: orient/],
+      [['bogus', 'task'], /unknown command: bogus/],
       [['init', dir, '--mode', 'huge'], /unknown mode: huge/],
       [['init', dir, '--skills', 'cursor'], /unknown skill target: cursor/],
       [['init', dir, '--docs', 'nope'], /--docs path not found: nope/],

@@ -10,7 +10,7 @@ Use this skill when entering an unfamiliar repository, starting a new task, fini
 ## Orient
 
 1. Read the repository's authoritative instructions (e.g. `AGENTS.md`, `CLAUDE.md`) and task request.
-2. Read `.dejavu/README.md` and `.dejavu/index.md` if present; select only task-relevant documentation, ontology, topology, epistemology, and accepted wisdom.
+2. If the `dejavu` CLI is available, run `dejavu orient "<task>"` for ranked, source-linked context. Otherwise read `.dejavu/README.md` and `.dejavu/index.md` and select only task-relevant documentation, ontology, topology, epistemology, and accepted wisdom.
 3. Follow source links and verify any time-sensitive claim against code, docs, or issues.
 4. Distinguish facts, assumptions, and unresolved questions. Do not treat proposed lessons as accepted.
 
