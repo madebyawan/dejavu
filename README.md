@@ -96,7 +96,7 @@ For a personal install, copy the folder: `cp -R skills/dejavu ~/.claude/skills/`
 npm test
 ```
 
-Tests use Node's built-in test runner and temporary directories.
+Tests use Node's built-in test runner, temporary directories, and sample repositories in `test/fixtures/`. See [docs/RELEASING.md](docs/RELEASING.md) for CI, versioning, and releases.
 
 ## License
 
