@@ -12,10 +12,10 @@
 - [x] Compact agent-to-agent session handoffs (`dejavu handoff`, `dejavu resume`).
 - [x] Evidence-linked `dejavu learn` proposals with human approval.
 - [x] `dejavu reconcile` for contradictions, stale entries, and supersession.
-- [ ] Pilot against Made by Awan, NoteFriends, Awan Sound Machines, and Awan Arcade.
+- [ ] Pilot against Made by Awan, NoteFriends, Awan Sound Machines, and Awan Arcade. Phase 1 (local measurement) is done; see [PILOT.md](PILOT.md).
 
 ## P2: optional extensions
 
-- [ ] Compare with Spec Kit workflows, without requiring Spec Kit.
-- [ ] Benchmark optional temporal knowledge graph approaches (e.g., Graphiti).
+- [x] Compare with Spec Kit workflows, without requiring Spec Kit ([evaluation](evaluations/spec-kit-and-graphiti.md)).
+- [x] Evaluate optional temporal knowledge graph approaches, e.g. Graphiti ([evaluation](evaluations/spec-kit-and-graphiti.md)): not adopted for now.
 - [ ] Measure token use, repeated exploration, handoff quality, and recurring mistakes.

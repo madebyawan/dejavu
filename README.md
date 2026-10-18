@@ -160,7 +160,7 @@ See the [roadmap](docs/ROADMAP.md) and [issues](https://github.com/madebyawan/de
 npm test
 ```
 
-Tests use Node's built-in test runner, temporary directories, and sample repositories in `test/fixtures/`. See [docs/RELEASING.md](docs/RELEASING.md) for CI, versioning, and releases.
+Tests use Node's built-in test runner, temporary directories, and sample repositories in `test/fixtures/`. See [docs/RELEASING.md](docs/RELEASING.md) for CI, versioning, and releases, and [docs/PILOT.md](docs/PILOT.md) for measurements on real repositories.
 
 ## License
 

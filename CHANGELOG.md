@@ -13,4 +13,6 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 - `dejavu reconcile`: read-only review of lesson metadata, evidence, supersession, staleness, duplicates, and contradictions; `accept`, `reject`, and `supersede` actions that require a named reviewer and preserve history.
 - `dejavu check` for required `.dejavu/` paths, broken local links, and skill frontmatter.
 - Canonical agent skill at `skills/dejavu/SKILL.md`, installable for Claude Code and Codex with `init --skills`.
+- `adopt-existing` summarizes large documentation folders by subfolder instead of truncating, and indexes Spec Kit's `.specify/memory/` constitution.
+- `scripts/benchmark-agent.mjs` compares headless Claude Code runs with and without `orient`.
 - CI on Node 22 and 24 across Linux, macOS, and Windows, with sample fixture repositories and a packed-tarball smoke test.

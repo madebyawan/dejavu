@@ -7,8 +7,12 @@ export const DOC_ROOT_CANDIDATES = [
   'rfc', 'rfcs', 'spec', 'specs', 'wiki',
 ];
 
+// Hidden folders that hold authoritative project rules (Spec Kit's constitution).
+export const HIDDEN_DOC_ROOTS = ['.specify/memory'];
+
 const MAX_DEPTH = 4;
-const MAX_PER_ROOT = 100;
+const MAX_PER_ROOT = 100; // larger roots are summarized by subfolder
+const MAX_PER_GROUP = 20;
 const SKIP_DIRS = new Set(['node_modules', '.git', '.dejavu']);
 
 const byPath = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
@@ -48,7 +52,7 @@ function titleOf(text, rel) {
  * create, so dry runs and structured mode index what will exist.
  * Returns { entryPoints: [{path,title}], roots: [{root, files, omitted}] }.
  */
-export function discover(root, { extraRoots = [], planned = new Map(), entryPointsOnly = false, limit = MAX_PER_ROOT } = {}) {
+export function discover(root, { extraRoots = [], planned = new Map(), entryPointsOnly = false } = {}) {
   const read = (rel) => {
     if (planned.has(rel)) return planned.get(rel);
     try {
@@ -70,7 +74,7 @@ export function discover(root, { extraRoots = [], planned = new Map(), entryPoin
   if (entryPointsOnly) return { entryPoints, roots: [] };
 
   const rootNames = new Set(extraRoots.map((r) => toPosix(r).replace(/^\.\/|\/+$/g, '')));
-  for (const name of DOC_ROOT_CANDIDATES) {
+  for (const name of [...DOC_ROOT_CANDIDATES, ...HIDDEN_DOC_ROOTS]) {
     const plannedHere = [...planned.keys()].some((rel) => rel.startsWith(`${name}/`));
     let isDir = false;
     try {
@@ -99,8 +103,7 @@ export function discover(root, { extraRoots = [], planned = new Map(), entryPoin
     roots.push({
       root: name,
       heading: isFile ? name : `${name}/`,
-      files: unique.slice(0, limit).map(describe),
-      omitted: Math.max(0, unique.length - limit),
+      files: unique.map(describe),
     });
   }
   return { entryPoints, roots };
@@ -132,10 +135,45 @@ export function renderIndex({ entryPoints, roots }, { mode }) {
   } else if (roots.length === 0) {
     lines.push('## Documentation', '', '_No documentation folders found._', '');
   }
-  for (const { root, heading, files, omitted } of roots) {
-    lines.push(`## ${heading}`, '', ...files.map(item));
-    if (omitted) lines.push(`- …and ${omitted} more under \`${root}/\``);
-    lines.push('');
+  for (const { root, heading, files } of roots) {
+    lines.push(`## ${heading}`, '', ...renderRoot(root, files), '');
   }
   return lines.join('\n');
+}
+
+const plural = (n) => `${n} Markdown file${n === 1 ? '' : 's'}`;
+
+// Group files by the first path segment below `prefix`; files directly in it use ''.
+function groupBy(files, prefix) {
+  const groups = new Map();
+  for (const f of files) {
+    const rest = f.path.slice(prefix.length + 1);
+    const key = rest.includes('/') ? rest.slice(0, rest.indexOf('/')) : '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(f);
+  }
+  return [...groups].sort(([a], [b]) => byPath(a, b));
+}
+
+/** List every file in small roots; summarize large subfolders so the index stays navigable. */
+function renderRoot(root, files) {
+  if (files.length <= MAX_PER_ROOT) return files.map(item);
+  const lines = [];
+  for (const [sub, group] of groupBy(files, root)) {
+    if (!sub) {
+      lines.push(...group.map(item));
+      continue;
+    }
+    const dir = `${root}/${sub}`;
+    if (group.length <= MAX_PER_GROUP) {
+      lines.push('', `### ${dir}/`, '', ...group.map(item));
+      continue;
+    }
+    const readme = group.find((f) => /^readme\.(md|markdown|mdx)$/i.test(f.path.slice(dir.length + 1)));
+    const parts = groupBy(group, dir).map(([name, g]) => (name ? `\`${name}/\` (${g.length})` : `${g.length} directly`));
+    lines.push('', `### ${dir}/`, '');
+    if (readme) lines.push(item(readme));
+    lines.push(`- [${escapeText(`${dir}/`)}](${link(dir)}/) — ${plural(group.length)}: ${parts.join(', ')}. Search with \`dejavu orient\` or open the folder.`);
+  }
+  return lines;
 }
