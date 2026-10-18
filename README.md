@@ -17,7 +17,7 @@ Déjà Vu helps agents inherit a project's architecture, decisions, constraints,
 
 ## Quick start
 
-Requires Node.js 22 or later. There are no runtime dependencies. Déjà Vu is not yet published to npm, so run it from a checkout:
+Requires Node.js 22 or later. There are no runtime dependencies. The npm package will be `dejavu-memory` (the command is `dejavu`). It is not published yet, so run it from a checkout:
 
 ```sh
 git clone https://github.com/madebyawan/dejavu.git
