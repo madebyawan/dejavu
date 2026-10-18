@@ -151,7 +151,7 @@ For a personal install, copy the folder: `cp -R skills/dejavu ~/.claude/skills/`
 
 ## Roadmap
 
-See the [roadmap](docs/ROADMAP.md) and [issues](https://github.com/madebyawan/dejavu/issues).
+See the [roadmap](docs/ROADMAP.md), [Knowledge Compiler proposal](docs/KNOWLEDGE-COMPILER.md), and [issues](https://github.com/madebyawan/dejavu/issues). A compiled wiki, `compile` and `lint` are proposed—not part of the released CLI.
 
 ## Development
 
