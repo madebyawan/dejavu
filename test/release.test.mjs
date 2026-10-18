@@ -28,6 +28,8 @@ test('extracts one version section', () => {
 
 test('package version is valid semver and the changelog has an Unreleased section', () => {
   const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(pkg.name, 'dejavu-memory');
+  assert.deepEqual(Object.keys(pkg.bin), ['dejavu']);
   assert.match(pkg.version, /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/);
   assert.equal(pkg.private, true, 'stay private until a package name and release are approved');
   const changelog = fs.readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8');

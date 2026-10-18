@@ -6,6 +6,8 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ### Added
 
+- Package name `dejavu-memory`; the executable is `dejavu`.
+
 - `dejavu init` with `minimal` (default), `structured`, and `adopt-existing` modes; never overwrites existing files.
 - `dejavu orient <task>`: bounded, source-linked, labeled context from docs and accepted knowledge.
 - `dejavu handoff` and `dejavu resume`: compact Git-aware session handoffs that reject secrets and transcript-sized input.
