@@ -9,6 +9,7 @@ import { KNOWLEDGE_DIR } from './templates.mjs';
 export const DEFAULT_BUDGET = 1200; // tokens
 export const INSTRUCTION_FILES = ['AGENTS.md', 'CLAUDE.md'];
 const MAX_EXCERPT_CHARS = 900;
+const MAX_PER_FILE = 2;
 const HEADER_RESERVE_CHARS = 400;
 
 // Rough, deterministic token estimate (about four characters per token).
@@ -40,9 +41,15 @@ function docChunks(root, rel) {
   const text = readText(root, rel);
   if (text == null) return [];
   const { body, bodyLine } = frontmatter(text);
-  return sections(body, { firstLine: bodyLine, fallbackTitle: path.posix.basename(rel) })
-    .filter((s) => s.text)
-    .map((s) => ({ path: rel, line: s.line, heading: s.heading, text: s.text, kind: 'source' }));
+  const parts = sections(body, { firstLine: bodyLine, fallbackTitle: path.posix.basename(rel) });
+  const title = parts.find((p) => p.level === 1)?.heading;
+  // Prefix subsection headings with the document title so "Scope" or "Fix" carry context.
+  return parts
+    .filter((p) => p.text)
+    .map((p) => ({
+      path: rel, line: p.line, text: p.text, kind: 'source',
+      heading: title && p.level > 1 ? `${title} › ${p.heading}` : p.heading,
+    }));
 }
 
 function tableRowChunks(root, rel, kind) {
@@ -175,8 +182,11 @@ export function orient(root, task, { budget = DEFAULT_BUDGET } = {}) {
   const maxChars = Math.max(0, budget * 4 - HEADER_RESERVE_CHARS);
 
   const selected = [];
+  const perFile = new Map();
   let used = 0;
   for (const chunk of ranked) {
+    // Cap sections per document for variety; knowledge entries are individual facts.
+    if (chunk.kind === 'source' && (perFile.get(chunk.path) ?? 0) >= MAX_PER_FILE) continue;
     const head = `### ${selected.length + 1}. ${chunk.heading}\n\n[${chunk.path}:${chunk.line}](${chunk.path}#L${chunk.line}) · ${chunk.kind}\n\n`;
     const room = maxChars - used - head.length - 2;
     if (room < 120) break;
@@ -184,6 +194,7 @@ export function orient(root, task, { budget = DEFAULT_BUDGET } = {}) {
     const block = `${head}${body}\n\n`;
     if (used + block.length > maxChars) break;
     selected.push({ ...chunk, block });
+    perFile.set(chunk.path, (perFile.get(chunk.path) ?? 0) + 1);
     used += block.length;
   }
 
@@ -210,7 +221,8 @@ export function renderOrientation(result) {
   }
 
   const selectedChars = selected.reduce((n, s) => n + s.block.length, 0);
-  const pct = totalChars ? Math.round((100 * selectedChars) / totalChars) : 0;
+  const ratio = totalChars ? (100 * selectedChars) / totalChars : 0;
+  const pct = ratio < 1 ? ratio.toFixed(1) : Math.round(ratio);
   lines.push(
     `Selected ${selected.length} of ${chunkCount} sections from ${fileCount} file(s): ~${estimateTokens(''.padEnd(selectedChars))} of ~${estimateTokens(''.padEnd(totalChars))} tokens (${pct}%).`,
     'Labels: source = authoritative document; accepted lesson = reviewed wisdom; known / assumption / open question = epistemology; knowledge = index entry to verify against its source. Code and issues remain authoritative.',

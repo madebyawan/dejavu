@@ -13,7 +13,7 @@ describe('orient', () => {
     assert.match(stdout, /^# Orientation: fix duplicate webhook processing/);
     assert.match(stdout, /Read first: \[AGENTS\.md\]\(AGENTS\.md\), \[\.dejavu\/index\.md\]/);
     assert.match(stdout, /W-0001: Deduplicate webhook events[\s\S]*?\[\.dejavu\/wisdom\/W-0001-dedupe-webhooks\.md:1\]\([^)]*\) · accepted lesson/);
-    assert.match(stdout, /### \d\. Webhooks\n\n\[docs\/architecture\.md:3\]\(docs\/architecture\.md#L3\) · source/);
+    assert.match(stdout, /### \d\. Architecture › Webhooks\n\n\[docs\/architecture\.md:3\]\(docs\/architecture\.md#L3\) · source/);
     assert.match(stdout, /· known\n/);
     assert.match(stdout, /· assumption\n/);
     assert.match(stdout, /Idempotency key[\s\S]*?· knowledge/);
@@ -31,7 +31,7 @@ describe('orient', () => {
 
   test('ranks the most relevant section first', () => {
     const { chunks } = corpus(fixtureRepo('with-knowledge'));
-    assert.equal(rank(chunks, 'postgres migrations backwards compatible')[0].heading, 'Database');
+    assert.equal(rank(chunks, 'postgres migrations backwards compatible')[0].heading, 'Architecture › Database');
     assert.equal(rank(chunks, TASK)[0].path, '.dejavu/wisdom/W-0001-dedupe-webhooks.md');
   });
 
