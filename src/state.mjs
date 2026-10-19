@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { topLevel } from './git.mjs';
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -25,12 +26,18 @@ function writeJson(file, value) {
 
 const declinedFile = (env) => path.join(stateDir(env), 'declined.json');
 
-export const isDeclined = (root, env) => Boolean(readJson(declinedFile(env), {})[root]);
+/** One key per repository, whichever folder inside it is given and however Git spells the path. */
+export function repoKey(dir) {
+  const key = path.resolve(topLevel(dir) ?? dir);
+  return process.platform === 'win32' ? key.toLowerCase() : key;
+}
 
-export function setDeclined(root, declined, env, now = new Date()) {
+export const isDeclined = (dir, env) => Boolean(readJson(declinedFile(env), {})[repoKey(dir)]);
+
+export function setDeclined(dir, declined, env, now = new Date()) {
   const all = readJson(declinedFile(env), {});
-  if (declined) all[root] = now.toISOString().slice(0, 10);
-  else delete all[root];
+  if (declined) all[repoKey(dir)] = now.toISOString().slice(0, 10);
+  else delete all[repoKey(dir)];
   writeJson(declinedFile(env), all);
 }
 

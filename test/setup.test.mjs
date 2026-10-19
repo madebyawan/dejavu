@@ -74,10 +74,10 @@ describe('setup', () => {
     process.env.DEJAVU_STATE_DIR = state;
     try {
       assert.match(run('setup', dir, '--decline').stdout, /will not offer Déjà Vu setup/);
-      assert.ok(isDeclined(path.resolve(dir), process.env));
+      assert.ok(isDeclined(dir, process.env));
       assert.deepEqual(snapshot(dir), {}, 'nothing written to the repository');
       run('setup', dir, '--undo-decline');
-      assert.ok(!isDeclined(path.resolve(dir), process.env));
+      assert.ok(!isDeclined(dir, process.env));
     } finally {
       delete process.env.DEJAVU_STATE_DIR;
     }

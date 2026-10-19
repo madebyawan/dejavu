@@ -3,7 +3,6 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { check } from './check.mjs';
 import { DEFAULT_MODE, MODES, SKILL_TARGETS, init } from './init.mjs';
-import { topLevel } from './git.mjs';
 import { DEFAULT_BUDGET, orient, renderOrientation } from './orient.mjs';
 import { HandoffError, createHandoff, listHandoffs, resume } from './handoff.mjs';
 import { learn } from './learn.mjs';
@@ -516,7 +515,7 @@ function runSetup(args, out) {
   }
   const root = resolveDir(positionals);
   if (values.decline || values['undo-decline']) {
-    setDeclined(topLevel(root) ?? root, values.decline);
+    setDeclined(root, values.decline);
     out.log(values.decline
       ? 'Recorded: agents will not offer Déjà Vu setup in this repository. Undo with `dejavu setup --undo-decline`.'
       : 'Agents may offer Déjà Vu setup in this repository again.');

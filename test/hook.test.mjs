@@ -36,7 +36,7 @@ describe('session-start hook', () => {
     const out = handleHook('session-start', { session_id: 's', cwd: path.join(dir, 'src') }, { env: e });
     assert.equal(out.hookSpecificOutput.hookEventName, 'SessionStart');
     assert.equal(context(out), SETUP_OFFER);
-    setDeclined(fs.realpathSync(dir), true, e);
+    setDeclined(path.join(dir, 'src'), true, e);
     assert.equal(handleHook('session-start', { session_id: 's', cwd: dir }, { env: e }), null);
   });
 
