@@ -42,3 +42,40 @@ export function sections(text, { firstLine = 1, fallbackTitle = '' } = {}) {
     .map(({ lines, ...s }) => ({ ...s, text: lines.join('\n').trim() }))
     .filter((s) => s.text || s.level > 0);
 }
+
+/** Rows of the first Markdown table: { header, rows: [{ cells, line }], end } (end = index after last row), or null. */
+export function firstTable(text) {
+  const lines = text.split(/\r?\n/);
+  const start = lines.findIndex((l) => /^\s*\|/.test(l));
+  if (start < 0) return null;
+  const split = (line) => line.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+  const header = split(lines[start]);
+  const rows = [];
+  let i = start + 1;
+  for (; i < lines.length && /^\s*\|/.test(lines[i]); i++) {
+    const cells = split(lines[i]);
+    if (cells.every((c) => /^:?-+:?$/.test(c)) || cells.every((c) => !c)) continue;
+    rows.push({ cells, line: i + 1 });
+  }
+  return { header, rows, end: i };
+}
+
+/** List items under each `## Heading`: { [lowercased heading]: [{ text, line }] }. */
+export function sectionItems(text) {
+  const out = {};
+  let current = null;
+  let inFence = false;
+  text.split(/\r?\n/).forEach((line, i) => {
+    if (/^\s*(```|~~~)/.test(line)) inFence = !inFence;
+    if (inFence) return;
+    const heading = /^#{2,6}\s+(.+?)\s*$/.exec(line);
+    if (heading) {
+      current = heading[1].toLowerCase();
+      out[current] ??= [];
+      return;
+    }
+    const item = current && /^\s*[-*]\s+(.+)$/.exec(line);
+    if (item) out[current].push({ text: item[1], line: i + 1 });
+  });
+  return out;
+}

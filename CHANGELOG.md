@@ -4,6 +4,30 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-19
+
+Déjà Vu now runs itself in Claude Code and asks before it remembers.
+
+### Added
+
+- Claude Code plugin (`/plugin marketplace add madebyawan/dejavu`, then `/plugin install dejavu@dejavu`). Its hooks:
+  - offer setup in any Git repository that has no `.dejavu/` (once; `dejavu setup --decline` stops it);
+  - add the project brief at session start, and again after `/clear` or compaction;
+  - add matching memory to each request, never repeating a section within a session;
+  - remind the agent once per session to record a handoff after files changed.
+- `dejavu setup`: creates `.dejavu/` if needed (adopting existing docs) and writes `.dejavu/setup.md`, a checklist of what memory is missing. The agent drafts what the code shows and asks the maintainer about the rest.
+- `dejavu remember`: appends a confirmed fact, assumption, open question, term, or component with its source (`--source maintainer` for answers given in conversation). Rejects secrets; skips duplicates.
+- `dejavu brief`: a short summary of project memory for the start of a session.
+- `dejavu hook <session-start|prompt|stop>`: the hook handlers the plugin calls.
+
+### Changed
+
+- The skill and the `AGENTS.md` pointer now tell agents to ask "Should I remember that …?" when they learn something durable, and to record it only if the maintainer agrees.
+
+### Fixed
+
+- Handoffs listed the wrong path for an uncommitted change when it was the first line of `git status`.
+
 ## [0.1.0] - 2026-10-18
 
 First release, published to npm as `dejavu-memory`. The command is `dejavu`.

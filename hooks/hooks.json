@@ -1,0 +1,27 @@
+{
+  "description": "Déjà Vu: offer setup, load the project brief, add relevant memory to requests, and remind about handoffs.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/bin/dejavu.mjs", "hook", "session-start"], "timeout": 15 }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/bin/dejavu.mjs", "hook", "prompt"], "timeout": 10 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/bin/dejavu.mjs", "hook", "stop"], "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

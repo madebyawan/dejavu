@@ -1,0 +1,15 @@
+{
+  "name": "dejavu",
+  "description": "Déjà Vu: project memory for coding agents, kept as reviewed Markdown in your repository.",
+  "owner": {
+    "name": "Adam Wan",
+    "url": "https://github.com/madebyawan"
+  },
+  "plugins": [
+    {
+      "name": "dejavu",
+      "source": "./",
+      "description": "Project memory for coding agents, kept as reviewed Markdown in your repository."
+    }
+  ]
+}

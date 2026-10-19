@@ -1,0 +1,14 @@
+{
+  "name": "dejavu",
+  "displayName": "Déjà Vu",
+  "version": "0.2.0",
+  "description": "Project memory for coding agents: offers setup in repositories without memory, loads a project brief each session, adds relevant memory to each request, and asks before remembering anything new.",
+  "author": {
+    "name": "Adam Wan",
+    "url": "https://github.com/madebyawan"
+  },
+  "homepage": "https://github.com/madebyawan/dejavu#readme",
+  "repository": "https://github.com/madebyawan/dejavu",
+  "license": "MIT",
+  "keywords": ["memory", "knowledge", "handoff", "documentation"]
+}

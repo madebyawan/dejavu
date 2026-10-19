@@ -14,6 +14,13 @@
 - [x] `dejavu reconcile` for contradictions, stale entries, and supersession.
 - [ ] Pilot across representative repositories without publishing any nonpublic repository identities or content. Phase 1 aggregate local measurements are documented in [PILOT.md](PILOT.md).
 
+## P1: automatic use (0.2.0)
+
+- [x] Guided `dejavu setup` that finds gaps in project memory and has the agent interview the maintainer.
+- [x] Claude Code plugin whose hooks offer setup, load a brief each session, add relevant memory to requests, and remind about handoffs.
+- [x] Ask-before-remembering protocol and `dejavu remember` for confirmed facts, terms, and components.
+- [ ] Automatic use in Codex and other agents beyond the `AGENTS.md` pointer, where they support hooks.
+
 ## P2: optional extensions
 
 - [x] Compare with Spec Kit workflows, without requiring Spec Kit ([evaluation](evaluations/spec-kit-and-graphiti.md)).

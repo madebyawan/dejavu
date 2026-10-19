@@ -8,12 +8,20 @@ import { HandoffError, createHandoff, listHandoffs, resume } from './handoff.mjs
 import { learn } from './learn.mjs';
 import { LessonError } from './lessons.mjs';
 import { accept, reject, report as reconcileReport, supersede } from './reconcile.mjs';
+import { brief } from './brief.mjs';
+import { EVENTS, handleHook } from './hook.mjs';
+import { KINDS, remember } from './remember.mjs';
+import { SETUP_FILE, setup } from './setup.mjs';
+import { setDeclined } from './state.mjs';
 
 const VERSION = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
 const HELP = `dejavu — Git-native knowledge for AI coding agents
 
 Usage:
+  dejavu setup [dir]            Set up project memory and list what is missing
+  dejavu brief                  Print a short summary of project memory
+  dejavu remember <text> --as   Record a confirmed fact, term, or component
   dejavu init [dir] [options]   Create missing Déjà Vu files (never overwrites)
   dejavu check [dir]            Validate .dejavu/ and local links
   dejavu orient <task>          Print bounded, source-linked context for a task
@@ -21,6 +29,7 @@ Usage:
   dejavu resume                 Show the latest open handoff
   dejavu learn --summary <text> Propose an evidence-backed lesson for review
   dejavu reconcile              Review lessons; accept, reject, or supersede them
+  dejavu hook <event>           Claude Code hook handler (used by the plugin)
   dejavu help [command]         Show help
 
 Options:
@@ -44,6 +53,68 @@ Options:
   --no-agents        Do not create AGENTS.md or CLAUDE.md pointers
   --dry-run          Show what would be created without writing
   -h, --help         Show this help
+`;
+
+const SETUP_HELP = `Usage: dejavu setup [dir] [options]
+
+Set up project memory in dir (default: current directory). Creates .dejavu/
+if it is missing (indexing existing docs), then writes .dejavu/setup.md: a
+checklist of what memory is missing — overview, key terms, components, sources
+of truth, past decisions, known traps, open questions, agent rules. An agent
+works through it with the maintainer, recording answers with \`dejavu remember\`.
+Existing files are never overwritten, so reruns are safe.
+
+Options:
+  --decline      Record that the maintainer does not want Déjà Vu here, so
+                 agents stop offering setup
+  --undo-decline Let agents offer setup here again
+  --no-agents    Do not create AGENTS.md or CLAUDE.md pointers
+  --dry-run      Show what would be created without writing
+  -h, --help     Show this help
+`;
+
+const BRIEF_HELP = `Usage: dejavu brief [options]
+
+Print a short summary of project memory for the start of a session: accepted
+lessons, known facts, terms, components, open questions, the open handoff,
+setup progress, and how to grow memory. Read-only.
+
+Options:
+  --dir <path>   Repository root (default: current directory)
+  -h, --help     Show this help
+`;
+
+const REMEMBER_HELP = `Usage: dejavu remember <text> --as <kind> --source <ref> [options]
+
+Append one confirmed entry to the knowledge layer. Agents run this only after
+the maintainer agrees that something should be remembered.
+
+Kinds:
+  known, assumption, question, superseded   .dejavu/epistemology.md
+  term        .dejavu/ontology.md (needs --name; text is the meaning)
+  component   .dejavu/topology.md (needs --name; text is the responsibility)
+
+Options:
+  --source <ref>    File[:line], commit, #12 or owner/repo#12, URL, or
+                    "maintainer" for an answer given in conversation
+                    (repeatable; required except for assumption and question)
+  --name <text>     Term or component name
+  --depends <text>  What a component depends on
+  --dir <path>      Repository root (default: current directory)
+  --dry-run         Show the entry without writing it
+  -h, --help        Show this help
+`;
+
+const HOOK_HELP = `Usage: dejavu hook <${EVENTS.join('|')}>
+
+Claude Code hook handler. Reads the hook's JSON input on stdin and prints hook
+output. The Déjà Vu plugin installs these hooks; you do not run them by hand.
+
+  session-start   Offer setup when a repository has no memory; otherwise
+                  add the project brief to the session
+  prompt          Add memory relevant to each request (once per section)
+  stop            Once per session, remind the agent to record a handoff
+                  after files changed
 `;
 
 const CHECK_HELP = `Usage: dejavu check [dir]
@@ -426,6 +497,141 @@ function runReconcile(args, out) {
   }
 }
 
+function runSetup(args, out) {
+  const { values, positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      decline: { type: 'boolean', default: false },
+      'undo-decline': { type: 'boolean', default: false },
+      'no-agents': { type: 'boolean', default: false },
+      'dry-run': { type: 'boolean', default: false },
+      help: { type: 'boolean', short: 'h', default: false },
+    },
+  });
+  if (values.help) {
+    out.log(SETUP_HELP);
+    return 0;
+  }
+  const root = resolveDir(positionals);
+  if (values.decline || values['undo-decline']) {
+    setDeclined(root, values.decline);
+    out.log(values.decline
+      ? 'Recorded: agents will not offer Déjà Vu setup in this repository. Undo with `dejavu setup --undo-decline`.'
+      : 'Agents may offer Déjà Vu setup in this repository again.');
+    return 0;
+  }
+  const dryRun = values['dry-run'];
+  const result = setup(root, { agents: !values['no-agents'], dryRun });
+  out.log(`Déjà Vu setup${dryRun ? ' — dry run, nothing written' : ''}`);
+  if (result.mode) out.log(`Created the knowledge layer (mode: ${result.mode}):`);
+  for (const r of result.created) {
+    out.log(`  ${r.action === 'create' ? (dryRun ? 'would create' : 'create') : 'exists'}`.padEnd(15) + ` ${r.path}`);
+  }
+  out.log(result.checklistCreated
+    ? `${dryRun ? 'Would write' : 'Wrote'} ${SETUP_FILE} with ${result.open.length} item(s) to fill in.`
+    : `${SETUP_FILE} already exists (left unchanged): ${result.open.length} open item(s).`);
+  for (const title of result.open) out.log(`  - ${title}`);
+  if (!result.open.length) {
+    out.log('\nNothing left to set up. Run `dejavu check`, then commit .dejavu/.');
+    return 0;
+  }
+  out.log(`
+Next steps for the agent running setup:
+1. Read the README, docs, and main source folders. Draft what the code shows
+   (key terms, components) and record each entry with its source file:
+   dejavu remember "<meaning>" --as term --name "<Term>" --source <file>
+2. Ask the maintainer about the rest, two or three questions at a time, in
+   plain language. Record each answer they give:
+   dejavu remember "<fact>" --as known --source maintainer
+3. Tick each item in ${SETUP_FILE} when it is answered or skipped.
+4. Run \`dejavu check\`, show the maintainer what changed, and suggest
+   committing .dejavu/ (and AGENTS.md/CLAUDE.md if they were created).`);
+  return 0;
+}
+
+function runBrief(args, out) {
+  const { values, positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      dir: { type: 'string', default: '.' },
+      help: { type: 'boolean', short: 'h', default: false },
+    },
+  });
+  if (values.help) {
+    out.log(BRIEF_HELP);
+    return 0;
+  }
+  if (positionals.length) throw new UsageError(`unexpected argument: ${positionals[0]}`);
+  const root = resolveDir([values.dir]);
+  if (!fs.existsSync(path.join(root, '.dejavu'))) {
+    out.log('No .dejavu/ here yet. Run `dejavu setup` to create project memory.');
+    return 0;
+  }
+  out.log(brief(root));
+  return 0;
+}
+
+function runRemember(args, out) {
+  const { values, positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      as: { type: 'string' },
+      source: { type: 'string', multiple: true, default: [] },
+      name: { type: 'string' },
+      depends: { type: 'string' },
+      dir: { type: 'string', default: '.' },
+      'dry-run': { type: 'boolean', default: false },
+      help: { type: 'boolean', short: 'h', default: false },
+    },
+  });
+  if (values.help) {
+    out.log(REMEMBER_HELP);
+    return 0;
+  }
+  if (!values.as) throw new UsageError(`remember needs --as (${KINDS.join(', ')})`);
+  const root = resolveDir([values.dir]);
+  try {
+    const result = remember(root, { ...values, text: positionals.join(' '), dryRun: values['dry-run'] });
+    if (result.duplicate) out.log(`Already recorded in ${result.path}: ${result.entry}`);
+    else out.log(`${values['dry-run'] ? 'Would add to' : 'Added to'} ${result.path}: ${result.entry}`);
+    return 0;
+  } catch (err) {
+    if (!(err instanceof LessonError)) throw err;
+    out.error(`dejavu remember: ${err.message}`);
+    return 1;
+  }
+}
+
+function runHook(args, out, input) {
+  const [event, extra] = args;
+  if (event === '-h' || event === '--help') {
+    out.log(HOOK_HELP);
+    return 0;
+  }
+  if (!EVENTS.includes(event)) throw new UsageError(`unknown hook event: ${event ?? '(none)'} (expected ${EVENTS.join(', ')})`);
+  if (extra) throw new UsageError(`unexpected argument: ${extra}`);
+  // A hook must never break the session: any failure means no output.
+  try {
+    const result = handleHook(event, input ?? readStdinJson());
+    if (result) out.log(JSON.stringify(result));
+  } catch {
+    // Ignore.
+  }
+  return 0;
+}
+
+function readStdinJson() {
+  if (process.stdin.isTTY) return {};
+  try {
+    return JSON.parse(fs.readFileSync(0, 'utf8') || '{}');
+  } catch {
+    return {};
+  }
+}
+
 function runCheck(args, out) {
   const { values, positionals } = parseArgs({
     args,
@@ -447,7 +653,7 @@ function runCheck(args, out) {
   return 0;
 }
 
-export function main(argv, out = console) {
+export function main(argv, out = console, { stdin } = {}) {
   const [command, ...rest] = argv;
   try {
     switch (command) {
@@ -455,12 +661,20 @@ export function main(argv, out = console) {
       case 'help':
       case '-h':
       case '--help':
-        out.log({ init: INIT_HELP, check: CHECK_HELP, orient: ORIENT_HELP, handoff: HANDOFF_HELP, resume: RESUME_HELP, learn: LEARN_HELP, reconcile: RECONCILE_HELP }[rest[0]] ?? HELP);
+        out.log({ setup: SETUP_HELP, brief: BRIEF_HELP, remember: REMEMBER_HELP, hook: HOOK_HELP, init: INIT_HELP, check: CHECK_HELP, orient: ORIENT_HELP, handoff: HANDOFF_HELP, resume: RESUME_HELP, learn: LEARN_HELP, reconcile: RECONCILE_HELP }[rest[0]] ?? HELP);
         return 0;
       case '-v':
       case '--version':
         out.log(VERSION);
         return 0;
+      case 'setup':
+        return runSetup(rest, out);
+      case 'brief':
+        return runBrief(rest, out);
+      case 'remember':
+        return runRemember(rest, out);
+      case 'hook':
+        return runHook(rest, out, stdin);
       case 'init':
         return runInit(rest, out);
       case 'check':
