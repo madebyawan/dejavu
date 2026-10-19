@@ -1,0 +1,3 @@
+#!/bin/sh
+# Lets agents run `dejavu` from the Claude Code plugin, which puts bin/ on PATH.
+exec node "$(dirname "$0")/dejavu.mjs" "$@"

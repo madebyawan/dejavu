@@ -28,6 +28,7 @@ This folder is the project's navigable knowledge layer for humans and coding age
 - [Wisdom](wisdom/README.md) — accepted, reviewed lessons.
 - [Proposals](proposals/README.md) — unreviewed lesson candidates; not canonical.
 - [Handoffs](handoffs/README.md) — concise session state.
+- \`setup.md\` — what \`dejavu setup\` found missing, ticked off as the maintainer answers.
 
 ## Rules
 
@@ -36,6 +37,7 @@ This folder is the project's navigable knowledge layer for humans and coding age
 3. Status is explicit: observed, inferred, proposed, accepted, or superseded.
 4. Agents propose; maintainers accept. Only reviewed lessons move from \`proposals/\` to \`wisdom/\`.
 5. Never record secrets, credentials, or full transcripts.
+6. Agents ask before remembering. New facts, terms, and components are recorded with \`dejavu remember\` only after the maintainer agrees.
 
 Run \`dejavu check\` after editing this folder.
 `;
@@ -166,9 +168,11 @@ export function agentsPointer({ structured }) {
 
 This repository keeps project knowledge with [Déjà Vu](https://github.com/madebyawan/dejavu).
 
-1. Read [.dejavu/README.md](.dejavu/README.md) and the [project index](.dejavu/index.md), then follow only the links your task needs.${docsLine}
+1. At the start of a task, run \`npx dejavu-memory brief\` (or read [.dejavu/README.md](.dejavu/README.md) and the [project index](.dejavu/index.md)), then follow only the links your task needs.${docsLine}
 2. Treat code, specifications, decision records, and issues as authoritative. Verify time-sensitive claims.
-3. Propose lessons in \`.dejavu/proposals/\` with evidence. Never promote them to \`.dejavu/wisdom/\` yourself.
+3. When you learn something durable that memory lacks, ask the maintainer whether to remember it; if they agree, record it with \`npx dejavu-memory remember\`. If \`.dejavu/setup.md\` has open items, offer to work through them.
+4. Propose lessons in \`.dejavu/proposals/\` with evidence. Never promote them to \`.dejavu/wisdom/\` yourself.
+5. When you finish or pause work, record a handoff with \`npx dejavu-memory handoff\`.
 `;
 }
 

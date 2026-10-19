@@ -37,3 +37,14 @@ test('package is publishable and the changelog has notes for its version', () =>
   assert.match(changelog, /^## \[Unreleased\]$/m);
   assert.ok(releaseNotes(changelog, pkg.version), `CHANGELOG.md has notes for ${pkg.version}`);
 });
+
+test('the Claude Code plugin matches the package version and ships the skill', () => {
+  const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const plugin = JSON.parse(fs.readFileSync(new URL('../.claude-plugin/plugin.json', import.meta.url), 'utf8'));
+  const market = JSON.parse(fs.readFileSync(new URL('../.claude-plugin/marketplace.json', import.meta.url), 'utf8'));
+  assert.equal(plugin.name, 'dejavu');
+  assert.equal(plugin.version, pkg.version);
+  assert.deepEqual(market.plugins.map((p) => [p.name, p.source]), [['dejavu', './']]);
+  assert.ok(fs.existsSync(new URL('../skills/dejavu/SKILL.md', import.meta.url)));
+  assert.ok(fs.statSync(new URL('../bin/dejavu', import.meta.url)).mode & 0o111 || process.platform === 'win32', 'bin/dejavu is executable');
+});

@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 
 function git(root, args) {
   const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
-  return result.status === 0 ? result.stdout.trim() : null;
+  return result.status === 0 ? result.stdout.trimEnd() : null;
 }
 
 export const isRepo = (root) => git(root, ['rev-parse', '--is-inside-work-tree']) === 'true';
@@ -47,3 +47,13 @@ export function changedSince(root, ref) {
 }
 
 export const headCommit = (root) => git(root, ['rev-parse', '--short', 'HEAD']);
+
+/** Absolute path of the repository's top-level directory, or null outside Git. */
+export const topLevel = (dir) => git(dir, ['rev-parse', '--show-toplevel']);
+
+/** A string that changes whenever HEAD or the working tree changes, ignoring paths that `ignore(line)` matches. */
+export function workState(root, ignore = () => false) {
+  const status = (git(root, ['status', '--porcelain=v1', '-uall']) ?? '').split('\n')
+    .filter((line) => line && !ignore(line));
+  return `${git(root, ['rev-parse', 'HEAD']) ?? ''}\n${status.join('\n')}`;
+}

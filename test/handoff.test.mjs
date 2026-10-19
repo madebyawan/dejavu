@@ -48,6 +48,13 @@ describe('handoff', () => {
     assert.equal(run('check', dir).code, 0);
   });
 
+  test('lists an uncommitted change to a tracked file with its full path', () => {
+    const dir = gitRepo();
+    fs.writeFileSync(path.join(dir, 'src/app.js'), 'export const y = 2;\n');
+    const { contents } = createHandoff(dir, { task: 'Edit app', ...at('2026-01-02T03:04:05Z') });
+    assert.match(contents, /## Changed files\n\n- `src\/app\.js`\n/);
+  });
+
   test('works outside Git and lists --file paths', () => {
     const dir = tempRepo();
     run('init', dir);

@@ -17,19 +17,68 @@ Déjà Vu helps agents inherit a project's architecture, decisions, constraints,
 
 ## Quick start
 
-Requires Node.js 22 or later. There are no runtime dependencies. The npm package is `dejavu-memory` and the command is `dejavu`:
+Requires Node.js 22 or later. There are no runtime dependencies.
+
+### Claude Code (automatic)
+
+Install the plugin once, in Claude Code:
+
+```text
+/plugin marketplace add madebyawan/dejavu
+/plugin install dejavu@dejavu
+```
+
+On Claude Code 2.1.275 or later, `/plugin install dejavu --marketplace madebyawan/dejavu` does both in one step.
+
+From then on, in every Git repository:
+
+- **No memory yet?** Claude offers to set it up. If you agree, it runs `dejavu setup`, drafts terms and components from the code, and asks you a few questions about what the code cannot show. Decline once and it stops asking in that repository.
+- **Every session** starts with a short project brief, and each request gets the memory that matches it.
+- **As you work**, when Claude learns something durable — you correct it, or state a decision or constraint — it asks "Should I remember that …?" and records it only if you say yes.
+- **When files changed**, Claude is reminded once to leave a handoff for the next session.
+
+### Any agent (manual)
+
+The npm package is `dejavu-memory` and the command is `dejavu`:
 
 ```sh
 cd your-project
-npx dejavu-memory init      # or: npm install -g dejavu-memory && dejavu init
+npx dejavu-memory setup     # or: npm install -g dejavu-memory && dejavu setup
 npx dejavu-memory check
 ```
+
+`setup` writes `.dejavu/setup.md`, a checklist of what memory is missing, for your agent to work through with you. The `AGENTS.md` pointer it creates tells other agents, such as Codex, to run `dejavu brief` at the start of a task and to ask before remembering.
 
 To run from a checkout instead, use `node path/to/dejavu/bin/dejavu.mjs <command>`.
 
 `init` only creates files that are missing. It never modifies, moves, or deletes existing files, so running it again is safe. Use `--dry-run` to preview what it would create.
 
 ## Commands
+
+### `dejavu setup [dir]`
+
+Creates `.dejavu/` if it is missing (indexing existing docs when there are any), then writes `.dejavu/setup.md`: a checklist of the gaps it found — overview, key terms, components, sources of truth, past decisions, things the code does not show, known traps, open questions, and agent rules. Your agent drafts what the code shows and asks you about the rest, ticking items off as you answer or skip them. Reruns never overwrite the checklist. `--decline` records, outside the repository, that you do not want Déjà Vu there; `--undo-decline` reverses it.
+
+### `dejavu remember <text> --as <kind>`
+
+Appends one confirmed entry with its source. Agents run it only after you agree.
+
+```sh
+dejavu remember "Scores reset on every deploy" --as known --source maintainer
+dejavu remember "A single playable game" --as term --name Cabinet --source src/cabinet.js
+dejavu remember "Runs the game loop" --as component --name Engine --depends Renderer --source src/engine.js
+dejavu remember "Do players want accounts?" --as question
+```
+
+Kinds: `known`, `assumption`, `question`, `superseded` (epistemology), `term` (ontology), and `component` (topology). Sources are file paths with optional lines, commits, `#12` or `owner/repo#12`, URLs, or `maintainer`. Secrets are rejected and duplicates skipped.
+
+### `dejavu brief`
+
+Prints a short summary of project memory — accepted lessons, known facts, terms, components, open questions, the open handoff, setup progress, and how to grow memory. The plugin adds it at the start of each session.
+
+### `dejavu hook <event>`
+
+The handlers behind the Claude Code plugin's hooks: `session-start`, `prompt`, and `stop`. They read the hook's JSON on stdin, stay silent outside Git repositories, and never fail a session. Per-session bookkeeping and declined repositories are stored outside the repository (in the plugin's data folder, or `~/.config/dejavu`).
 
 ### `dejavu init [dir]`
 
@@ -134,13 +183,14 @@ error: .dejavu/index.md:12: broken link to ../docs/old.md. Fix the path or remov
   wisdom/          # accepted lessons (reviewed)
   proposals/       # unreviewed lesson candidates
   handoffs/        # concise session state
+  setup.md         # setup checklist, ticked off as gaps are filled
 ```
 
 See [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md) for the format.
 
 ## Agent skill
 
-The canonical skill is [`skills/dejavu/SKILL.md`](skills/dejavu/SKILL.md). It tells agents how to orient to the project, write handoffs, and propose lessons. Install it per project with `dejavu init --skills claude,codex` (or `all`). That copies the file to the locations each agent documents:
+The canonical skill is [`skills/dejavu/SKILL.md`](skills/dejavu/SKILL.md). It tells agents how to set up memory, orient to the project, ask before remembering, write handoffs, and propose lessons. The Claude Code plugin includes it. To install it without the plugin, run `dejavu init --skills claude,codex` (or `all`) in each project. That copies the file to the locations each agent documents:
 
 | Agent | Project | Personal |
 | ----- | ------- | -------- |

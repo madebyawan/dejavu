@@ -176,9 +176,9 @@ function rebaseLinks(text, fromPath) {
 
 const quote = (text) => text.split('\n').map((l) => (l ? `> ${l}` : '>')).join('\n');
 
-export function orient(root, task, { budget = DEFAULT_BUDGET } = {}) {
+export function orient(root, task, { budget = DEFAULT_BUDGET, exclude = new Set() } = {}) {
   const { chunks, totalChars, fileCount } = corpus(root);
-  const ranked = rank(chunks, task);
+  const ranked = rank(chunks, task).filter((c) => !exclude.has(`${c.path}:${c.line}`));
   const maxChars = Math.max(0, budget * 4 - HEADER_RESERVE_CHARS);
 
   const selected = [];
