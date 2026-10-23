@@ -13,7 +13,14 @@ export const HIDDEN_DOC_ROOTS = ['.specify/memory'];
 const MAX_DEPTH = 4;
 const MAX_PER_ROOT = 100; // larger roots are summarized by subfolder
 const MAX_PER_GROUP = 20;
-const SKIP_DIRS = new Set(['node_modules', '.git', '.dejavu']);
+export const GRAPHIFY_GRAPH = 'graphify-out/graph.json';
+const SKIP_DIRS = new Set(['node_modules', '.git', '.dejavu', 'graphify-out']);
+
+/**
+ * True when the repository has a graphify code graph. Agents then query code
+ * structure on demand, so Déjà Vu stops pushing it and keeps to what code cannot show.
+ */
+export const hasCodeGraph = (root) => fs.existsSync(path.join(root, GRAPHIFY_GRAPH));
 
 const byPath = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 // Sort a folder's README before its siblings so indexes read top-down.

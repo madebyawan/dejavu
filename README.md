@@ -33,9 +33,10 @@ On Claude Code 2.1.275 or later, `/plugin install dejavu --marketplace madebyawa
 From then on, in every Git repository:
 
 - **No memory yet?** Claude offers to set it up. If you agree, it runs `dejavu setup`, drafts terms and components from the code, and asks you a few questions about what the code cannot show. Decline once and it stops asking in that repository.
-- **Every session** starts with a short project brief, and each request gets the memory that matches it.
+- **Every session** starts with a short project brief, and each request gets the memory that matches it. Documents that match only one word of a request are left out.
+- **With [graphify](https://github.com/Graphify-Labs/graphify)** (`graphify-out/graph.json` present), Déjà Vu leaves code structure to the graph, which the agent queries on demand. The brief points to `graphify query` instead of listing components, requests only get lessons, facts, assumptions, open questions, and terms (at most ~400 tokens), and setup does not ask for components.
 - **As you work**, when Claude learns something durable — you correct it, or state a decision or constraint — it asks "Should I remember that …?" and records it only if you say yes.
-- **When files changed**, Claude is reminded once to leave a handoff for the next session.
+- **When a session stops with uncommitted changes**, Claude is reminded once to leave a handoff if it is pausing unfinished work.
 
 ### Any agent (manual)
 
@@ -113,18 +114,18 @@ Ranking is deterministic keyword relevance (BM25) over Markdown sections, so the
 
 ### `dejavu handoff` and `dejavu resume`
 
-`handoff` writes compact session state to `.dejavu/handoffs/YYYY-MM-DD-<task>.md`. It reads the branch, commit, and changed files from Git, and you supply the rest. Items over 500 characters, or that look like credentials (tokens, keys, `password=`…), are rejected, which keeps transcripts and secrets out. Existing handoffs are never overwritten.
+`handoff` records where paused work stands in `.dejavu/handoffs/<branch>.md`. Each branch has one handoff, and recording again replaces it, so they never pile up. Branch, base, and commit come from Git, and you supply the rest; changed files are not copied in, since `git diff` has them. Items over 500 characters, or that look like credentials (tokens, keys, `password=`…), are rejected, which keeps transcripts and secrets out. Handoffs are working state, not reviewed memory, so `.dejavu/handoffs/` is Git-ignored by default; delete `.dejavu/handoffs/.gitignore` to share them through Git.
 
 ```sh
 dejavu handoff --task "Add login redirect" --pr 42 \
   --tests "npm test: 53 passed" \
   --question "Should redirects keep query params?" \
   --next "Handle expired sessions"
-dejavu resume          # newest open handoff, preferring the current branch
+dejavu resume          # the current branch's open handoff
 dejavu resume --list   # every handoff with its status
 ```
 
-`resume` notes when the handoff came from another branch or files have changed since its commit. Set `status: closed` in a handoff's frontmatter when it is done.
+`resume` never loads another branch's handoff; it only counts them. It notes files changed since the handoff's commit. A handoff stops applying once its branch is merged into its base or deleted, or when you set `status: closed` in its frontmatter.
 
 ### `dejavu learn`
 
@@ -182,7 +183,7 @@ error: .dejavu/index.md:12: broken link to ../docs/old.md. Fix the path or remov
   epistemology.md  # known, assumed, open, superseded
   wisdom/          # accepted lessons (reviewed)
   proposals/       # unreviewed lesson candidates
-  handoffs/        # concise session state
+  handoffs/        # paused work, one per branch (Git-ignored)
   setup.md         # setup checklist, ticked off as gaps are filled
 ```
 

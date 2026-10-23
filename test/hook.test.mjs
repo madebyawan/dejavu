@@ -66,10 +66,20 @@ describe('brief', () => {
     assert.match(text, /Known:\n- Scores reset on every deploy \(maintainer, [\d-]+\)/);
     assert.match(text, /Components:\n- Engine — Runs the loop/);
     assert.match(text, /- …and \d+ more in \.dejavu\//);
-    assert.match(text, /## Open handoff\n\n\.dejavu\/handoffs\/2026-03-01-wire-scoring\.md \(branch `main`\): Handoff: Wire scoring/);
+    assert.match(text, /## Open handoff\n\n\.dejavu\/handoffs\/main\.md \(branch `main`\): Handoff: Wire scoring/);
     assert.match(text, /setup item\(s\) still open in \.dejavu\/setup\.md/);
     assert.match(run('brief', '--dir', dir).stdout, /^# Déjà Vu project memory/);
     assert.match(run('brief', '--dir', tempRepo()).stdout, /Run `dejavu setup`/);
+  });
+
+  test('with a graphify graph, points to it instead of listing components', () => {
+    const dir = gitRepo(tempRepo({ 'graphify-out/graph.json': '{}' }));
+    run('init', dir);
+    run('remember', 'Runs the loop', '--as', 'component', '--name', 'Engine', '--source', 'src/engine.js', '--dir', dir);
+    const text = brief(dir);
+    assert.doesNotMatch(text, /Components:/);
+    assert.match(text, /graphify query/);
+    assert.doesNotMatch(brief(gitRepo(tempRepo())), /graphify/);
   });
 });
 
@@ -95,10 +105,29 @@ describe('prompt hook', () => {
     assert.equal(handleHook('prompt', { session_id: 's', cwd: dir, prompt: '/help me' }, { env: e }), null);
     assert.equal(handleHook('prompt', { session_id: 's', cwd: dir, prompt: 'ok' }, { env: e }), null);
   });
+  test('ignores documents that match only one term of the request', () => {
+    const dir = gitRepo(tempRepo({ 'docs/billing.md': '# Billing\n\nInvoices are sent monthly.\n' }));
+    run('init', dir, '--mode', 'adopt-existing');
+    const e = env();
+    assert.equal(handleHook('prompt', { session_id: 's', cwd: dir, prompt: 'rename the invoices button colour' }, { env: e }), null);
+    assert.match(context(handleHook('prompt', { session_id: 's', cwd: dir, prompt: 'when are invoices sent' }, { env: e })), /docs\/billing\.md/);
+  });
+
+  test('with a graphify graph, adds only what code cannot show, within a smaller budget', () => {
+    const dir = gitRepo(tempRepo({ 'docs/scoring.md': '# Scoring\n\nScores are computed on deploy.\n', 'graphify-out/graph.json': '{}' }));
+    run('init', dir, '--mode', 'adopt-existing');
+    run('remember', 'Scores reset on every deploy', '--as', 'known', '--source', 'maintainer', '--dir', dir);
+    run('remember', 'Runs scoring on deploy', '--as', 'component', '--name', 'Scorer', '--source', 'src/score.js', '--dir', dir);
+    for (let i = 0; i < 20; i++) run('remember', `Scores deploy fact ${i} ${'x'.repeat(200)}`, '--as', 'known', '--source', 'maintainer', '--dir', dir);
+    const text = context(handleHook('prompt', { session_id: 's', cwd: dir, prompt: 'why do scores reset on deploy' }, { env: env() }));
+    assert.match(text, /Scores reset on every deploy/);
+    assert.doesNotMatch(text, /docs\/scoring\.md|topology\.md/);
+    assert.ok(text.length <= 400 * 4 + 200, `prompt context is ${text.length} chars`);
+  });
 });
 
 describe('stop hook', () => {
-  test('reminds once after files change, unless a handoff was written or the agent asked a question', () => {
+  test('reminds once after uncommitted changes, unless a handoff was written or the agent asked a question', () => {
     const dir = gitRepo(tempRepo({ 'src/app.js': 'export {};\n' }));
     run('init', dir);
     git(dir, 'add', '-A');
@@ -121,6 +150,18 @@ describe('stop hook', () => {
     fs.writeFileSync(path.join(dir, 'src/app.js'), 'export const x = 2;\n');
     createHandoff(dir, { task: 'Done' });
     assert.equal(handleHook('stop', { session_id: 't', cwd: dir }, { env: e }), null, 'handoff already written');
+  });
+
+  test('stays silent when the session committed its work', () => {
+    const dir = gitRepo(tempRepo({ 'src/app.js': 'export {};\n' }));
+    run('init', dir);
+    git(dir, 'add', '-A');
+    git(dir, 'commit', '-q', '-m', 'memory');
+    const e = env();
+    handleHook('session-start', { session_id: 's', cwd: dir }, { env: e });
+    fs.writeFileSync(path.join(dir, 'src/app.js'), 'export const x = 1;\n');
+    git(dir, 'commit', '-qam', 'finish');
+    assert.equal(handleHook('stop', { session_id: 's', cwd: dir, last_assistant_message: 'Done.' }, { env: e }), null);
   });
 });
 

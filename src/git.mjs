@@ -53,7 +53,16 @@ export const topLevel = (dir) => git(dir, ['rev-parse', '--show-toplevel']);
 
 /** A string that changes whenever HEAD or the working tree changes, ignoring paths that `ignore(line)` matches. */
 export function workState(root, ignore = () => false) {
-  const status = (git(root, ['status', '--porcelain=v1', '-uall']) ?? '').split('\n')
-    .filter((line) => line && !ignore(line));
-  return `${git(root, ['rev-parse', 'HEAD']) ?? ''}\n${status.join('\n')}`;
+  return `${git(root, ['rev-parse', 'HEAD']) ?? ''}\n${uncommitted(root, ignore).join('\n')}`;
+}
+
+export const branchExists = (root, branch) => git(root, ['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`]) !== null;
+
+export const mergeBase = (root, a, b) => git(root, ['merge-base', a, b]);
+
+export const isAncestor = (root, a, b) => spawnSync('git', ['merge-base', '--is-ancestor', a, b], { cwd: root }).status === 0;
+
+/** Uncommitted paths (porcelain lines) that `ignore(line)` does not match. */
+export function uncommitted(root, ignore = () => false) {
+  return (git(root, ['status', '--porcelain=v1', '-uall']) ?? '').split('\n').filter((line) => line && !ignore(line));
 }

@@ -36,6 +36,12 @@ describe('setup', () => {
     for (const [p, text] of Object.entries(before)) assert.equal(after[p], text, `${p} unchanged`);
   });
 
+  test('does not ask for components when a graphify graph maps the code', () => {
+    const titles = findGaps(tempRepo({ 'graphify-out/graph.json': '{}' })).map((g) => g.title);
+    assert.ok(!titles.includes('Components'));
+    assert.ok(titles.includes('Key terms'));
+  });
+
   test('never overwrites the checklist and reports progress on rerun', () => {
     const dir = tempRepo();
     run('setup', dir);

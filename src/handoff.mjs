@@ -1,15 +1,15 @@
-// `dejavu handoff` and `dejavu resume`: compact Markdown session state in
-// .dejavu/handoffs/. Never stores secrets or transcripts; never overwrites.
+// `dejavu handoff` and `dejavu resume`: compact Markdown state for paused work,
+// one file per branch in .dejavu/handoffs/ (Git-ignored by default). Never
+// stores secrets or transcripts.
 import fs from 'node:fs';
 import path from 'node:path';
-import { changedFiles, changedSince, currentBranch, defaultBase, headCommit, isRepo } from './git.mjs';
+import { branchExists, changedSince, currentBranch, defaultBase, headCommit, isAncestor, isRepo, mergeBase } from './git.mjs';
 import { slugify } from './lessons.mjs';
 import { frontmatter, sections } from './markdown.mjs';
 import { KNOWLEDGE_DIR } from './templates.mjs';
 
 export const HANDOFF_DIR = `${KNOWLEDGE_DIR}/handoffs`;
 export const MAX_FIELD_CHARS = 500;
-const MAX_FILES = 50;
 const NONE = '_None recorded._';
 
 // Common credential shapes. A match blocks the handoff; the user rewrites it.
@@ -46,14 +46,17 @@ function validate(fields) {
 const list = (items, ordered = false) =>
   (items.length ? items.map((item, i) => `${ordered ? `${i + 1}.` : '-'} ${item}`).join('\n') : NONE);
 
-export function renderHandoff({ date, created, task, branch, base, commit, pr, files, tests, questions, next }) {
-  const shown = files.slice(0, MAX_FILES).map((f) => `\`${f}\``);
-  if (files.length > MAX_FILES) shown.push(`…and ${files.length - MAX_FILES} more`);
+/** File name for a branch's handoff: `feature/login` -> `feature-login`. */
+export const branchSlug = (branch) => slugify(branch.replace(/\//g, '-'), 'branch');
+
+export function renderHandoff({ date, created, task, branch, base, fork, commit, pr, tests, questions, next }) {
   const meta = [
     '---',
     `date: ${date}`,
     `created: ${created}`,
     `branch: ${branch ?? ''}`,
+    `base: ${base ?? ''}`,
+    `fork: ${fork ?? ''}`,
     `commit: ${commit ?? ''}`,
     `pr: ${(pr ?? '').replace(/^#/, '')}`,
     'status: open',
@@ -68,44 +71,59 @@ export function renderHandoff({ date, created, task, branch, base, commit, pr, f
     ...meta, '',
     `# Handoff: ${task}`, '',
     '## Branch and PR', '', ...where, '',
-    '## Changed files', '', list(shown), '',
     '## Tests', '', tests.length ? list(tests) : '_Not recorded._', '',
     '## Unresolved', '', list(questions), '',
     '## Next steps', '', list(next, true), '',
   ].join('\n');
 }
 
+/**
+ * Write the handoff for the current branch, replacing the branch's previous one,
+ * so there is at most one handoff per branch. Outside Git, one per task.
+ */
 export function createHandoff(root, options) {
-  const { task, pr = null, tests = [], questions = [], next = [], files: extraFiles = [], now = new Date(), dryRun = false } = options;
+  const { task, pr = null, tests = [], questions = [], next = [], now = new Date(), dryRun = false } = options;
   const created = now.toISOString().replace(/\.\d+Z$/, 'Z');
   const date = created.slice(0, 10);
   if (!fs.existsSync(path.join(root, KNOWLEDGE_DIR))) {
     throw new HandoffError(`${KNOWLEDGE_DIR}/ not found. Run \`dejavu init\` first.`);
   }
-  validate({ task: [task], pr: pr ? [pr] : [], tests, unresolved: questions, next, files: extraFiles });
+  validate({ task: [task], pr: pr ? [pr] : [], tests, unresolved: questions, next });
 
   const repo = isRepo(root);
   const branch = repo ? currentBranch(root) : null;
   const base = repo ? defaultBase(root) : null;
-  const files = [...new Set([...(repo ? changedFiles(root, base) : []), ...extraFiles])]
-    .filter((f) => !f.startsWith(`${HANDOFF_DIR}/`))
-    .sort();
+  const sharedBase = base && base !== branch ? base : null;
   const contents = renderHandoff({
-    date, created, task, branch, base: base && base !== branch ? base : null, commit: repo ? headCommit(root) : null,
-    pr: pr && /^\d+$/.test(pr) ? `#${pr}` : pr, files, tests, questions, next,
+    date, created, task, branch, base: sharedBase,
+    fork: sharedBase ? mergeBase(root, 'HEAD', sharedBase) : null,
+    commit: repo ? headCommit(root) : null,
+    pr: pr && /^\d+$/.test(pr) ? `#${pr}` : pr, tests, questions, next,
   });
 
-  const stem = `${date}-${slugify(task, 'handoff')}`;
-  let rel = `${HANDOFF_DIR}/${stem}.md`;
-  for (let n = 2; fs.existsSync(path.join(root, rel)); n++) rel = `${HANDOFF_DIR}/${stem}-${n}.md`;
+  const rel = `${HANDOFF_DIR}/${branch ? branchSlug(branch) : `${date}-${slugify(task, 'handoff')}`}.md`;
+  const replaced = fs.existsSync(path.join(root, rel));
   if (!dryRun) {
     fs.mkdirSync(path.join(root, HANDOFF_DIR), { recursive: true });
-    fs.writeFileSync(path.join(root, rel), contents, { flag: 'wx' });
+    fs.writeFileSync(path.join(root, rel), contents);
   }
-  return { path: rel, contents, warnings: tests.length ? [] : ['No tests recorded. Pass --tests "<command>: <result>" so the next session knows what was verified.'] };
+  return { path: rel, contents, replaced, warnings: tests.length ? [] : ['No tests recorded. Pass --tests "<command>: <result>" so the next session knows what was verified.'] };
 }
 
-/** All handoffs, newest first: [{ path, fields, title }]. */
+/**
+ * 'open', or why a handoff no longer applies: 'closed' (by hand), 'branch deleted',
+ * or 'merged' (the branch gained commits after it forked and is now in its base).
+ */
+export function handoffState(root, handoff) {
+  const { status = 'open', branch, base, fork } = handoff.fields;
+  if (status !== 'open') return status;
+  if (!branch || !isRepo(root)) return 'open';
+  if (!branchExists(root, branch)) return 'branch deleted';
+  if (base && fork && !isAncestor(root, branch, fork) && isAncestor(root, branch, base)) return 'merged';
+  return 'open';
+}
+
+/** All handoffs, newest first: [{ path, fields, title, text }]. */
 export function listHandoffs(root) {
   const dir = path.join(root, HANDOFF_DIR);
   if (!fs.existsSync(dir)) return [];
@@ -124,22 +142,23 @@ export function listHandoffs(root) {
     .map(({ key, ...h }) => h);
 }
 
-/** Pick the newest open handoff, preferring the current branch. */
+/**
+ * The open handoff for the current branch. Handoffs from other branches are
+ * only counted, so a session never loads state for work it is not doing.
+ * Outside a branch, the newest open handoff.
+ */
 export function resume(root) {
-  const open = listHandoffs(root).filter((h) => (h.fields.status ?? 'open') === 'open');
+  const open = listHandoffs(root).filter((h) => handoffState(root, h) === 'open');
   const branch = isRepo(root) ? currentBranch(root) : null;
-  const handoff = open.find((h) => branch && h.fields.branch === branch) ?? open[0] ?? null;
-  if (!handoff) return { handoff: null, notes: [] };
-
+  const handoff = branch ? open.find((h) => h.fields.branch === branch) ?? null : open[0] ?? null;
+  const others = open.filter((h) => h !== handoff).length;
   const notes = [];
-  if (branch && handoff.fields.branch && handoff.fields.branch !== branch) {
-    notes.push(`This handoff was written on branch \`${handoff.fields.branch}\`; you are on \`${branch}\`.`);
-  }
-  if (handoff.fields.commit && isRepo(root)) {
+  if (handoff?.fields.commit && isRepo(root)) {
     const since = changedSince(root, handoff.fields.commit);
     if (since === null) notes.push(`Commit \`${handoff.fields.commit}\` from the handoff is not in this clone; verify the state before continuing.`);
     else if (since.length) notes.push(`${since.length} file(s) differ from the handoff commit \`${handoff.fields.commit}\`: ${since.slice(0, 10).map((f) => `\`${f}\``).join(', ')}${since.length > 10 ? ', …' : ''}.`);
   }
-  if (open.length > 1) notes.push(`${open.length - 1} other open handoff(s); run \`dejavu resume --list\`. Set \`status: closed\` in a handoff's frontmatter once it is done.`);
+  if (handoff?.fields.base) notes.push(`For the branch's changes, run \`git diff --stat ${handoff.fields.base}...\`.`);
+  if (others) notes.push(`${others} open handoff(s) on other branches; run \`dejavu resume --list\`.`);
   return { handoff, notes };
 }

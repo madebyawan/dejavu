@@ -1,10 +1,11 @@
 // `dejavu brief`: a short summary of the knowledge layer for the start of a
-// session — terms, components, known facts, accepted lessons, open handoff,
+// session — terms, components, known facts, accepted lessons, this branch's handoff,
 // setup progress, and how to grow memory. Read-only.
 import fs from 'node:fs';
 import path from 'node:path';
 import { resume } from './handoff.mjs';
 import { loadLessons } from './lessons.mjs';
+import { hasCodeGraph } from './discover.mjs';
 import { firstTable, listValue, sectionItems } from './markdown.mjs';
 import { SETUP_FILE, setupStatus } from './setup.mjs';
 import { KNOWLEDGE_DIR } from './templates.mjs';
@@ -30,7 +31,7 @@ When you learn something durable that this memory does not have — the maintain
 - Facts, terms, components: \`dejavu remember "<text>" --as known|assumption|question|term|component [--name <term>] --source <file|commit|#issue|URL|maintainer>\`
 - Lessons from a concrete bug or review: \`dejavu learn ...\` (a proposal; only the maintainer accepts it)
 
-Ask at a natural pause, not mid-task, and at most a couple of times per session. Never record secrets. When you finish or pause work, record a handoff with \`dejavu handoff --task ... --tests ... --next ...\`.`;
+Ask at a natural pause, not mid-task, and at most a couple of times per session. Never record secrets. If you pause unfinished work, record a handoff for the branch with \`dejavu handoff --task ... --tests ... --next ...\`.`;
 
 /** Lines for a list section, stopping before the character budget runs out. */
 function fit(label, items, room) {
@@ -66,9 +67,11 @@ export function brief(root, { maxChars = BRIEF_CHARS } = {}) {
   const pending = lessons.filter((l) => l.fields.status === 'proposed');
   const { handoff } = resume(root);
   const status = setupStatus(root);
+  const graph = hasCodeGraph(root);
 
   const head = `# Déjà Vu project memory\n\nThis repository keeps reviewed project memory in ${KNOWLEDGE_DIR}/ (start at ${KNOWLEDGE_DIR}/README.md and ${KNOWLEDGE_DIR}/index.md). Code, docs, and the issue tracker stay authoritative; verify time-sensitive claims before relying on them. For task-specific context run \`dejavu orient "<task>"\`.`;
   const tail = [
+    graph ? 'Code structure (modules, call paths, where things live) is in the graphify graph: run `graphify query "<question>"`. This memory holds what the code cannot show.' : '',
     pending.length ? `${pending.length} lesson proposal(s) await the maintainer's review; do not treat them as accepted.` : '',
     handoff ? `## Open handoff\n\n${handoff.path}${handoff.fields.branch ? ` (branch \`${handoff.fields.branch}\`)` : ''}: ${handoff.title}. Run \`dejavu resume\` before continuing that work.` : '',
     setupNote(status),
@@ -81,7 +84,7 @@ export function brief(root, { maxChars = BRIEF_CHARS } = {}) {
     ['Accepted lessons', accepted.map((l) => `${l.fields.id}: ${l.title || l.name}`)],
     ['Known', (epi.known ?? []).map((i) => i.text)],
     ['Terms', ontology.map((r) => `${r.cells[0]} — ${r.cells[1] ?? ''}`)],
-    ['Components', topology.map((r) => `${r.cells[0]} — ${r.cells[1] ?? ''}`)],
+    ['Components', graph ? [] : topology.map((r) => `${r.cells[0]} — ${r.cells[1] ?? ''}`)],
     ['Open questions', (epi['open questions'] ?? []).map((i) => i.text)],
   ]) {
     const block = fit(label, items, Math.max(0, Math.min(room, maxChars / 3)));

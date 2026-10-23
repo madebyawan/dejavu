@@ -4,6 +4,26 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-23
+
+Less context: handoffs no longer pile up, and Déjà Vu steps aside for graphify.
+
+### Changed
+
+- Each branch keeps at most one handoff, `.dejavu/handoffs/<branch>.md`; recording again replaces it. Outside Git, there is one per task.
+- Handoffs no longer list changed files; `resume` points to `git diff` instead.
+- `resume` and the brief only show the current branch's handoff, and count the others.
+- A handoff whose branch was merged into its base or deleted is treated as closed. `resume --list` shows why.
+- New repositories Git-ignore `.dejavu/handoffs/` (via `.dejavu/handoffs/.gitignore`). Run `dejavu init` in an existing repository to add it.
+- The Stop hook only reminds about a handoff when the session leaves uncommitted changes. Committed work is finished or recoverable from Git.
+- The per-request hook leaves out documents that match only one word of the request.
+- In repositories with a graphify graph (`graphify-out/graph.json`), Déjà Vu leaves code structure to graphify: the brief points to `graphify query` instead of listing components; each request gets only lessons, facts, assumptions, open questions, and terms, within ~400 tokens instead of ~800; and setup no longer asks for components.
+- Documentation discovery skips `graphify-out/`.
+
+### Removed
+
+- `dejavu handoff --file`.
+
 ## [0.2.0] - 2026-10-19
 
 Déjà Vu now runs itself in Claude Code and asks before it remembers.

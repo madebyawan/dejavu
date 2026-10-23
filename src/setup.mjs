@@ -3,7 +3,7 @@
 // Never overwrites; the checklist is ticked by hand as items are answered.
 import fs from 'node:fs';
 import path from 'node:path';
-import { discover } from './discover.mjs';
+import { discover, hasCodeGraph } from './discover.mjs';
 import { init } from './init.mjs';
 import { loadLessons, today } from './lessons.mjs';
 import { firstTable, sectionItems } from './markdown.mjs';
@@ -27,7 +27,8 @@ const GAPS = [
     'Ask: "In a sentence or two, what is this project and who uses it?" Record the answer as a known fact.'],
   ['terms', 'Key terms', (root) => !firstTable(read(root, `${KNOWLEDGE_DIR}/ontology.md`))?.rows.length,
     'Draft 5–10 domain terms from the code and docs, each citing the file that defines it, then ask the maintainer to confirm or correct them. Record with `--as term`.'],
-  ['components', 'Components', (root) => !firstTable(read(root, `${KNOWLEDGE_DIR}/topology.md`))?.rows.length,
+  // A graphify graph already maps the code's structure; spend the questions elsewhere.
+  ['components', 'Components', (root) => !hasCodeGraph(root) && !firstTable(read(root, `${KNOWLEDGE_DIR}/topology.md`))?.rows.length,
     'Draft the main modules or services from the code, each citing its folder or entry file, then ask the maintainer to confirm. Record with `--as component`.'],
   ['sources', 'Sources of truth', (root, found) => !found.roots.length,
     'Ask: "Where do plans, specs, and decisions live — a docs folder, the issue tracker, a wiki, or nowhere yet?" Record the answer as a known fact.'],

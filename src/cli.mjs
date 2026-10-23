@@ -4,7 +4,7 @@ import { parseArgs } from 'node:util';
 import { check } from './check.mjs';
 import { DEFAULT_MODE, MODES, SKILL_TARGETS, init } from './init.mjs';
 import { DEFAULT_BUDGET, orient, renderOrientation } from './orient.mjs';
-import { HandoffError, createHandoff, listHandoffs, resume } from './handoff.mjs';
+import { HandoffError, createHandoff, handoffState, listHandoffs, resume } from './handoff.mjs';
 import { learn } from './learn.mjs';
 import { LessonError } from './lessons.mjs';
 import { accept, reject, report as reconcileReport, supersede } from './reconcile.mjs';
@@ -25,8 +25,8 @@ Usage:
   dejavu init [dir] [options]   Create missing Déjà Vu files (never overwrites)
   dejavu check [dir]            Validate .dejavu/ and local links
   dejavu orient <task>          Print bounded, source-linked context for a task
-  dejavu handoff --task <text>  Record compact session state in .dejavu/handoffs/
-  dejavu resume                 Show the latest open handoff
+  dejavu handoff --task <text>  Record paused work for this branch in .dejavu/handoffs/
+  dejavu resume                 Show this branch's open handoff
   dejavu learn --summary <text> Propose an evidence-backed lesson for review
   dejavu reconcile              Review lessons; accept, reject, or supersede them
   dejavu hook <event>           Claude Code hook handler (used by the plugin)
@@ -113,8 +113,8 @@ output. The Déjà Vu plugin installs these hooks; you do not run them by hand.
   session-start   Offer setup when a repository has no memory; otherwise
                   add the project brief to the session
   prompt          Add memory relevant to each request (once per section)
-  stop            Once per session, remind the agent to record a handoff
-                  after files changed
+  stop            Once per session, remind the agent to record a handoff when
+                  it stops with uncommitted changes
 `;
 
 const CHECK_HELP = `Usage: dejavu check [dir]
@@ -139,10 +139,11 @@ Options:
 
 const HANDOFF_HELP = `Usage: dejavu handoff --task <text> [options]
 
-Write a compact handoff to .dejavu/handoffs/YYYY-MM-DD-<task>.md. Branch,
-commit, and changed files (since the default branch, plus uncommitted) are read
-from Git. Existing handoffs are never overwritten. Items longer than 500
-characters or that look like secrets are rejected.
+Record where paused work stands, in .dejavu/handoffs/<branch>.md. Each branch
+has one handoff; recording again replaces it. Branch and commit are read from
+Git; changed files are not stored, since Git has them. Handoffs are Git-ignored
+by default. Items longer than 500 characters or that look like secrets are
+rejected.
 
 Options:
   --task <text>       What the session was doing (required)
@@ -150,7 +151,6 @@ Options:
   --tests <text>      Test command and result, e.g. "npm test: 53 passed" (repeatable)
   --question <text>   Unresolved question or issue (repeatable)
   --next <text>       Concrete next step (repeatable)
-  --file <path>       Extra changed file to list (repeatable)
   --dir <path>        Repository root (default: current directory)
   --dry-run           Print the handoff without writing it
   -h, --help          Show this help
@@ -158,9 +158,9 @@ Options:
 
 const RESUME_HELP = `Usage: dejavu resume [options]
 
-Print the newest open handoff, preferring one written on the current branch,
-with notes about branch mismatches and files changed since it was written.
-Handoffs with "status: closed" in their frontmatter are skipped.
+Print the open handoff for the current branch, with notes about files changed
+since it was written. Handoffs whose branch was merged or deleted, or with
+"status: closed" in their frontmatter, are skipped.
 
 Options:
   --list         List all handoffs instead
@@ -335,7 +335,6 @@ function runHandoff(args, out) {
       tests: { type: 'string', multiple: true, default: [] },
       question: { type: 'string', multiple: true, default: [] },
       next: { type: 'string', multiple: true, default: [] },
-      file: { type: 'string', multiple: true, default: [] },
       dir: { type: 'string', default: '.' },
       'dry-run': { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false },
@@ -351,10 +350,10 @@ function runHandoff(args, out) {
   try {
     const result = createHandoff(root, {
       task: values.task.trim(), pr: values.pr, tests: values.tests, questions: values.question,
-      next: values.next, files: values.file, dryRun: values['dry-run'],
+      next: values.next, dryRun: values['dry-run'],
     });
     if (values['dry-run']) out.log(result.contents.trimEnd());
-    else out.log(`Wrote ${result.path}`);
+    else out.log(`${result.replaced ? 'Replaced' : 'Wrote'} ${result.path}`);
     for (const w of result.warnings) out.log(`Note: ${w}`);
     return 0;
   } catch (err) {
@@ -383,12 +382,13 @@ function runResume(args, out) {
   if (values.list) {
     const all = listHandoffs(root);
     if (!all.length) out.log('No handoffs yet. Record one with `dejavu handoff --task "..."`.');
-    for (const h of all) out.log(`${(h.fields.status ?? 'open').padEnd(7)} ${h.path}  ${h.fields.branch ? `[${h.fields.branch}] ` : ''}${h.title}`);
+    for (const h of all) out.log(`${handoffState(root, h).padEnd(14)} ${h.path}  ${h.fields.branch ? `[${h.fields.branch}] ` : ''}${h.title}`);
     return 0;
   }
   const { handoff, notes } = resume(root);
   if (!handoff) {
-    out.log('No open handoffs. Record one with `dejavu handoff --task "..."`.');
+    out.log('No open handoff for this branch.');
+    for (const n of notes) out.log(`Note: ${n}`);
     return 0;
   }
   out.log(`Resuming from ${handoff.path}`);

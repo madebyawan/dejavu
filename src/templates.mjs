@@ -27,7 +27,7 @@ This folder is the project's navigable knowledge layer for humans and coding age
 - [Epistemology](epistemology.md) — what is known, assumed, uncertain, or superseded.
 - [Wisdom](wisdom/README.md) — accepted, reviewed lessons.
 - [Proposals](proposals/README.md) — unreviewed lesson candidates; not canonical.
-- [Handoffs](handoffs/README.md) — concise session state.
+- [Handoffs](handoffs/README.md) — paused work, one per branch (Git-ignored).
 - \`setup.md\` — what \`dejavu setup\` found missing, ticked off as the maintainer answers.
 
 ## Rules
@@ -117,15 +117,16 @@ ${lessonFormat('P', 'proposed')}
 
 const handoffs = `# Handoffs
 
-Concise, task-specific session state for the next agent or maintainer. Create one with \`dejavu handoff --task "..."\` and read the latest with \`dejavu resume\`, or write \`YYYY-MM-DD-short-slug.md\` by hand, recording:
+Where paused work stands, for the next session on the same branch. Each branch has at most one handoff, \`<branch>.md\`; recording again replaces it. Create one with \`dejavu handoff --task "..."\` and read the current branch's with \`dejavu resume\`. A handoff records:
 
-- Task scope and current branch or PR
-- Changed files
+- Task scope, branch, and PR
 - Tests run and their results
 - Unresolved issues
 - Concrete next actions
 
-Set \`status: closed\` in the frontmatter when a handoff is done. Never include secrets or full transcripts.
+Changed files are not stored; Git has them. A handoff stops applying once its branch is merged or deleted, or when you set \`status: closed\` in its frontmatter.
+
+Handoffs are working state, not reviewed memory, so this folder is Git-ignored by default (see \`.gitignore\` here). Remove that file to share handoffs through Git. Never include secrets or full transcripts.
 `;
 
 export function knowledgeFiles() {
@@ -138,6 +139,7 @@ export function knowledgeFiles() {
     [`${dir}/wisdom/README.md`, wisdom],
     [`${dir}/proposals/README.md`, proposals],
     [`${dir}/handoffs/README.md`, handoffs],
+    [`${dir}/handoffs/.gitignore`, '# Handoffs are local working state. Delete this file to commit them.\n*\n!.gitignore\n!README.md\n'],
   ];
 }
 
@@ -172,7 +174,7 @@ This repository keeps project knowledge with [Déjà Vu](https://github.com/made
 2. Treat code, specifications, decision records, and issues as authoritative. Verify time-sensitive claims.
 3. When you learn something durable that memory lacks, ask the maintainer whether to remember it; if they agree, record it with \`npx dejavu-memory remember\`. If \`.dejavu/setup.md\` has open items, offer to work through them.
 4. Propose lessons in \`.dejavu/proposals/\` with evidence. Never promote them to \`.dejavu/wisdom/\` yourself.
-5. When you finish or pause work, record a handoff with \`npx dejavu-memory handoff\`.
+5. If you pause unfinished work, record a handoff with \`npx dejavu-memory handoff\`.
 `;
 }
 

@@ -7,7 +7,7 @@ import { exists, read, run, snapshot, tempRepo } from './helpers.mjs';
 const KNOWLEDGE = [
   '.dejavu/README.md', '.dejavu/index.md', '.dejavu/ontology.md', '.dejavu/topology.md',
   '.dejavu/epistemology.md', '.dejavu/wisdom/README.md', '.dejavu/proposals/README.md',
-  '.dejavu/handoffs/README.md',
+  '.dejavu/handoffs/README.md', '.dejavu/handoffs/.gitignore',
 ];
 
 describe('init --mode minimal (default)', () => {
@@ -30,7 +30,7 @@ describe('init --mode minimal (default)', () => {
     const { code, stdout } = run('init', dir);
     assert.equal(code, 0);
     assert.deepEqual(snapshot(dir), before);
-    assert.match(stdout, /Created 0 file\(s\); left 10 existing file\(s\) unchanged/);
+    assert.match(stdout, /Created 0 file\(s\); left 11 existing file\(s\) unchanged/);
     assert.doesNotMatch(stdout, /Note:/);
   });
 

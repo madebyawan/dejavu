@@ -146,14 +146,16 @@ export function rank(chunks, task) {
   return docs
     .map(({ chunk, tf, length }) => {
       let score = 0;
+      let matched = 0;
       for (const q of query) {
         const f = tf.get(q) ?? 0;
         if (!f) continue;
+        matched++;
         const idf = Math.log(1 + (docs.length - df.get(q) + 0.5) / (df.get(q) + 0.5));
         score += idf * ((f * (k1 + 1)) / (f + k1 * (1 - b + (b * length) / avg)));
       }
       if (chunk.kind === 'accepted lesson') score *= 1.25;
-      return { ...chunk, score };
+      return { ...chunk, score, matched };
     })
     .filter((c) => c.score > 0)
     .sort((x, y) => y.score - x.score || (x.path < y.path ? -1 : x.path > y.path ? 1 : x.line - y.line));
@@ -176,9 +178,16 @@ function rebaseLinks(text, fromPath) {
 
 const quote = (text) => text.split('\n').map((l) => (l ? `> ${l}` : '>')).join('\n');
 
-export function orient(root, task, { budget = DEFAULT_BUDGET, exclude = new Set() } = {}) {
+/**
+ * `include(chunk)` limits which chunks may be selected. `minSourceTerms` drops
+ * document sections that match fewer distinct task terms; knowledge entries are
+ * short, so one strong term is enough for them.
+ */
+export function orient(root, task, { budget = DEFAULT_BUDGET, exclude = new Set(), include = () => true, minSourceTerms = 1 } = {}) {
   const { chunks, totalChars, fileCount } = corpus(root);
-  const ranked = rank(chunks, task).filter((c) => !exclude.has(`${c.path}:${c.line}`));
+  const ranked = rank(chunks.filter(include), task)
+    .filter((c) => !exclude.has(`${c.path}:${c.line}`))
+    .filter((c) => c.kind !== 'source' || c.matched >= minSourceTerms);
   const maxChars = Math.max(0, budget * 4 - HEADER_RESERVE_CHARS);
 
   const selected = [];
